@@ -1,0 +1,112 @@
+[
+  {
+    "id": 1,
+    "name": "Virat Kohli",
+    "role": "Batsman",
+    "photo": "https://i.imgur.com/1Q9Z1Zm.jpg",
+    "basePrice": 2000000,
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold",
+    "stats": { "matches": 237, "runs": 7263, "average": 37.25, "strikeRate": 130.02 }
+  },
+  {
+    "id": 2,
+    "name": "Rohit Sharma",
+    "role": "Batsman",
+    "photo": "https://i.imgur.com/2Q9Z1Zm.jpg",
+    "basePrice": 1800000,
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold",
+    "stats": { "matches": 243, "runs": 6211, "average": 29.57, "strikeRate": 130.05 }
+  },
+  {
+    "id": 3,
+    "name": "Jasprit Bumrah",
+    "role": "Bowler",
+    "photo": "https://i.imgur.com/3Q9Z1Zm.jpg",
+    "basePrice": 1500000,
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold",
+    "stats": { "matches": 120, "wickets": 145, "average": 23.3, "economy": 7.39 }
+  },
+  {
+    "id": 4,
+    "name": "KL Rahul",
+    "role": "Batsman",
+    "photo": "https://i.imgur.com/4Q9Z1Zm.jpg",
+    "basePrice": 1700000,
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold",
+    "stats": { "matches": 118, "runs": 4163, "average": 46.78, "strikeRate": 134.42 }
+  },
+  {
+    "id": 5,
+    "name": "Hardik Pandya",
+    "role": "All-rounder",
+    "photo": "https://i.imgur.com/5Q9Z1Zm.jpg",
+    "basePrice": 1600000,
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold",
+    "stats": { "matches": 123, "runs": 2309, "wickets": 53, "average": 30.38, "strikeRate": 145.86 }
+  },
+  {
+    "id": 6,
+    "name": "Ravindra Jadeja",
+    "role": "All-rounder",
+    "photo": "https://i.imgur.com/6Q9Z1Zm.jpg",
+    "basePrice": 1600000,
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold",
+    "stats": { "matches": 226, "runs": 2692, "wickets": 132, "average": 26.85, "strikeRate": 128.56 }
+  },
+  {
+    "id": 7,
+    "name": "Shubman Gill",
+    "role": "Batsman",
+    "photo": "https://i.imgur.com/7Q9Z1Zm.jpg",
+    "basePrice": 1400000,
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold",
+    "stats": { "matches": 74, "runs": 2271, "average": 37.98, "strikeRate": 134.07 }
+  },
+  {
+    "id": 8,
+    "name": "Yuzvendra Chahal",
+    "role": "Bowler",
+    "photo": "https://i.imgur.com/8Q9Z1Zm.jpg",
+    "basePrice": 1300000,
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold",
+    "stats": { "matches": 145, "wickets": 187, "average": 21.69, "economy": 7.66 }
+  },
+  {
+    "id": 9,
+    "name": "Rishabh Pant",
+    "role": "Wicketkeeper",
+    "photo": "https://i.imgur.com/9Q9Z1Zm.jpg",
+    "basePrice": 1500000,
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold",
+    "stats": { "matches": 98, "runs": 2838, "average": 34.61, "strikeRate": 147.97 }
+  },
+  {
+    "id": 10,
+    "name": "Mohammed Shami",
+    "role": "Bowler",
+    "photo": "https://i.imgur.com/10Q9Z1Zm.jpg",
+    "basePrice": 1200000,
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold",
+    "stats": { "matches": 110, "wickets": 127, "average": 27.72, "economy": 8.44 }
+  }
+]

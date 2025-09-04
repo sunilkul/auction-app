@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POC Raise Hand</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f5f7fa; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+    .box { background: #fff; border-radius: 12px; box-shadow: 0 4px 24px #0001; padding: 32px; min-width: 320px; }
+    input, select, button { font-size: 1rem; margin: 8px 0; padding: 8px; border-radius: 6px; border: 1px solid #ccc; width: 100%; }
+    button { background: #1976d2; color: #fff; border: none; cursor: pointer; font-weight: bold; }
+    button:active { background: #1251a3; }
+    .msg { margin-top: 16px; color: #43a047; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Raise Hand</h2>
+    <form id="raiseForm">
+      <label for="team">Team Name</label>
+      <input id="team" name="team" required placeholder="Enter your team name" />
+      <label for="poc">POC Name</label>
+      <input id="poc" name="poc" required placeholder="Enter your name" />
+      <button type="submit">Raise Hand</button>
+    </form>
+    <div class="msg" id="msg"></div>
+  </div>
+  <script>
+    // TODO: Replace with your Firebase config
+    const firebaseConfig = {
+      apiKey: 'YOUR_API_KEY',
+      authDomain: 'YOUR_AUTH_DOMAIN',
+      databaseURL: 'YOUR_DATABASE_URL',
+      projectId: 'YOUR_PROJECT_ID',
+      storageBucket: 'YOUR_STORAGE_BUCKET',
+      messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+      appId: 'YOUR_APP_ID',
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    document.getElementById('raiseForm').onsubmit = function(e) {
+      e.preventDefault();
+      const team = document.getElementById('team').value.trim();
+      const poc = document.getElementById('poc').value.trim();
+      if (!team || !poc) return;
+      const ts = Date.now();
+      db.ref('hands/' + ts).set({ team, poc, ts })
+        .then(() => {
+          document.getElementById('msg').textContent = 'Hand raised!';
+          document.getElementById('raiseForm').reset();
+        });
+    };
+  </script>
+</body>
+</html>

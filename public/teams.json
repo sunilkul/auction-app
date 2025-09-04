@@ -1,0 +1,92 @@
+[
+  {
+    "id": 1,
+    "name": "Mumbai Indians",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/2/25/Mumbai_Indians_Logo.svg",
+    "purse": 100000000,
+    "remainingPurse": 85000000,
+    "poc1": "Akash Ambani",
+    "poc2": "Mahela Jayawardene"
+  },
+  {
+    "id": 2,
+    "name": "Chennai Super Kings",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/8/81/Chennai_Super_Kings_Logo.svg",
+    "purse": 100000000,
+    "remainingPurse": 90000000,
+    "poc1": "Kasi Viswanathan",
+    "poc2": "Stephen Fleming"
+  },
+  {
+    "id": 3,
+    "name": "Royal Challengers Bangalore",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/4/4c/Royal_Challengers_Bangalore_Logo.svg",
+    "purse": 100000000,
+    "remainingPurse": 80000000,
+    "poc1": "Prathmesh Mishra",
+    "poc2": "Mike Hesson"
+  },
+  {
+    "id": 4,
+    "name": "Kolkata Knight Riders",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/9/9a/Kolkata_Knight_Riders_Logo.svg",
+    "purse": 100000000,
+    "remainingPurse": 95000000,
+    "poc1": "Venky Mysore",
+    "poc2": "Brendon McCullum"
+  },
+  {
+    "id": 5,
+    "name": "Delhi Capitals",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/2/2f/Delhi_Capitals_Logo.svg",
+    "purse": 100000000,
+    "remainingPurse": 87000000,
+    "poc1": "Parth Jindal",
+    "poc2": "Ricky Ponting"
+  },
+  {
+    "id": 6,
+    "name": "Sunrisers Hyderabad",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/8/81/Sunrisers_Hyderabad_Logo.svg",
+    "purse": 100000000,
+    "remainingPurse": 92000000,
+    "poc1": "Kaviya Maran",
+    "poc2": "Tom Moody"
+  },
+  {
+    "id": 7,
+    "name": "Punjab Kings",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/d/d4/Punjab_Kings_Logo.svg",
+    "purse": 100000000,
+    "remainingPurse": 93000000,
+    "poc1": "Ness Wadia",
+    "poc2": "Anil Kumble"
+  },
+  {
+    "id": 8,
+    "name": "Rajasthan Royals",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/6/60/Rajasthan_Royals_Logo.svg",
+    "purse": 100000000,
+    "remainingPurse": 91000000,
+    "poc1": "Manoj Badale",
+    "poc2": "Kumar Sangakkara"
+  },
+  {
+    "id": 9,
+    "name": "Gujarat Titans",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/0/09/Gujarat_Titans_Logo.svg",
+    "purse": 100000000,
+    "remainingPurse": 94000000,
+    "poc1": "Arvinder Singh",
+    "poc2": "Ashish Nehra"
+  },
+  {
+    "id": 10,
+    "name": "Lucknow Super Giants",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/5/56/Lucknow_Super_Giants_Logo.svg",
+    "purse": 100000000,
+    "remainingPurse": 96000000,
+    "poc1": "Sanjiv Goenka",
+    "poc2": "Andy Flower"
+  }
+]

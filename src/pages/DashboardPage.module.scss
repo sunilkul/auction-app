@@ -1,0 +1,102 @@
+.dashboardBg {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f2027 0%, #2c5364 100%);
+  padding: 2rem;
+}
+
+.heading {
+  text-align: center;
+  font-size: 3rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 2px;
+  margin-bottom: 2.5rem;
+  text-shadow: 0 4px 24px #000a, 0 1px 0 #fff3;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { text-shadow: 0 4px 24px #000a, 0 1px 0 #fff3; }
+  50% { text-shadow: 0 8px 32px #0ffb, 0 1px 0 #fff3; }
+  100% { text-shadow: 0 4px 24px #000a, 0 1px 0 #fff3; }
+}
+
+.teamsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+}
+
+.teamCard {
+  background: linear-gradient(120deg, #fff 60%, #e0e7ff 100%);
+  border-radius: 1.5rem;
+  box-shadow: 0 8px 32px #0002;
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+  border: 3px solid #0f2027;
+}
+.teamCard:hover {
+  transform: translateY(-8px) scale(1.04) rotate(-1deg);
+  box-shadow: 0 16px 48px #0003;
+  border-color: #ffb300;
+}
+
+.logo {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 2px 8px #0003);
+}
+
+.teamName {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f2027;
+  margin-bottom: 0.5rem;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px #fff8;
+}
+
+.purseRow {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.purse {
+  color: #009688;
+}
+.remainingPurse {
+  color: #ff5722;
+}
+
+.pocBox {
+  background: #e3f2fd;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  margin-top: 1rem;
+  width: 100%;
+  box-shadow: 0 2px 8px #0001;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.pocLabel {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1976d2;
+}
+.pocName {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #222;
+  margin-bottom: 0.25rem;
+}
