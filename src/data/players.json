@@ -1,0 +1,36 @@
+[
+  {
+    "id": 1,
+    "name": "Virat Kohli",
+    "role": "Batsman",
+    "photo": "https://i.imgur.com/1Q9Z1Zm.jpg",
+    "basePrice": 100,
+    "stats": { "runs": 12000, "matches": 250, "average": 58.2 },
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold"
+  },
+  {
+    "id": 2,
+    "name": "Jasprit Bumrah",
+    "role": "Bowler",
+    "photo": "https://i.imgur.com/3Q9Z1Zm.jpg",
+    "basePrice": 80,
+    "stats": { "wickets": 200, "matches": 120, "average": 22.5 },
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold"
+  },
+  {
+    "id": 3,
+    "name": "Hardik Pandya",
+    "role": "All-rounder",
+    "photo": "https://i.imgur.com/5Q9Z1Zm.jpg",
+    "basePrice": 90,
+    "stats": { "runs": 3000, "wickets": 80, "matches": 110, "average": 34.2 },
+    "soldPrice": null,
+    "teamId": null,
+    "status": "Unsold"
+  }
+  // ...add more players as needed
+]

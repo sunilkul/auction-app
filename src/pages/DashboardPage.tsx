@@ -92,13 +92,19 @@ const DashboardPage: React.FC = () => {
               width: '100%',
               boxShadow: '0 2px 8px #0001',
               display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16
             }}>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1976d2' }}>POC 1</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222', marginBottom: 4 }}>{team.poc1}</div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1976d2' }}>POC 2</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222' }}>{team.poc2}</div>
+              <div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1976d2' }}>POC 1</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222' }}>{team.poc1}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1976d2' }}>POC 2</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#222' }}>{team.poc2}</div>
+              </div>
             </div>
           </div>
         ))}

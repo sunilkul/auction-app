@@ -20,4 +20,6 @@ export interface Player {
   teamName?: string;
   status: 'SOLD' | 'UNSOLD';
   stats: Record<string, number>;
+  isNewPlayer:number;
+
 }

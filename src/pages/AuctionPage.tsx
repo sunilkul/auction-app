@@ -212,9 +212,22 @@ const AuctionPage: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 260px', gap: 32, width: '100%', maxWidth: '1600px', margin: '0 auto', alignItems: 'start' }}>
         {/* Player Info */}
         <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px #0001', padding: 18, minWidth: 140, maxWidth: 220, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src={player.photo} alt={player.name} style={{ width: 90, height: 90, objectFit: 'cover', borderRadius: '50%', margin: '0 auto 1rem' }} />
+          <img src={player.photo} alt={player.name} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '50%', margin: '0 auto 10px' }} />
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1976d2', textAlign: 'center', margin: 0 }}>{player.name}</h2>
-          {/* Removed player.role as it no longer exists */}
+          <div style={{ fontSize: 13, color: player.isNewPlayer === 1 ? '#43a047' : '#888', fontWeight: 600, marginBottom: 6 }}>
+            {player.isNewPlayer === 1 ? 'New Player' : 'Old Player'}
+          </div>
+          {/* Player stats instead of photo */}
+          <table style={{ width: '100%', fontSize: 13, margin: '10px 0' }}>
+            <tbody>
+              {Object.entries(player.stats || {}).map(([key, value]) => (
+                <tr key={key}>
+                  <td style={{ textTransform: 'capitalize', padding: '2px 6px', color: '#555' }}>{key}</td>
+                  <td style={{ fontWeight: 700, padding: '2px 6px', color: '#1976d2' }}>{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14 }}>Base Price: <b>₹{player.basePrice.toLocaleString()}</b></div>
           <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14 }}>Current Price: <b style={{ color: '#ff5722' }}>₹{currentBid?.toLocaleString()}</b></div>
           <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14 }}>Highest Bidder: <b style={{ color: '#009688' }}>{currentBidTeam ? teams.find(t => t.id === currentBidTeam)?.name : '-'}</b></div>
@@ -256,8 +269,11 @@ const AuctionPage: React.FC = () => {
               <img src={team.logo} alt={team.name} style={{ width: 22, height: 22, objectFit: 'contain', marginBottom: 2 }} />
               <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 2 }}>{team.name}</div>
               <div style={{ fontSize: 10, color: '#009688', marginBottom: 2 }}>₹{teamPurse[team.id]?.toLocaleString()}</div>
-              <button onClick={() => handleBid(team.id, true)} style={{ margin: '4px 1px 0 1px', background: '#1976d2', color: '#fff', border: 'none', borderRadius: 5, padding: '2px 6px', cursor: 'pointer', fontSize: 11 }}>Bid Up</button>
-              <button onClick={() => handleBid(team.id, false)} style={{ margin: '4px 1px 0 1px', background: '#ff5722', color: '#fff', border: 'none', borderRadius: 5, padding: '2px 6px', cursor: 'pointer', fontSize: 11 }}>Bid Down</button>
+              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'center', marginTop: 4 }}>
+                <span style={{ fontWeight: 600, fontSize: 13, marginRight: 2 }}>Bid</span>
+                <button onClick={() => handleBid(team.id, true)} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 6px', minWidth: 24, minHeight: 22, cursor: 'pointer', fontSize: 13, fontWeight: 700, marginRight: 2 }}>↑</button>
+                <button onClick={() => handleBid(team.id, false)} style={{ background: '#ff5722', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 6px', minWidth: 24, minHeight: 22, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>↓</button>
+              </div>
             </div>
           ))}
         </div>
