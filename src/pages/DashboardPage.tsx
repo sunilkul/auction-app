@@ -7,8 +7,19 @@ const DashboardPage: React.FC = () => {
     // fetch('/teams.json').then(res => res.json()).then(setTeams); // Old code for reference
     fetch('http://localhost:8282/api/teams')
       .then(res => res.json())
-      .then(setTeams)
-      .catch(err => console.error('Failed to fetch teams:', err));
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setTeams(data);
+        } else if (data && typeof data === 'object') {
+          setTeams([data]);
+        } else {
+          setTeams([]);
+        }
+      })
+      .catch(err => {
+        setTeams([]);
+        console.error('Failed to fetch teams:', err);
+      });
   }, []);
 
   return (
@@ -48,9 +59,9 @@ const DashboardPage: React.FC = () => {
             transition: 'transform 0.3s, box-shadow 0.3s',
           }}>
             <img src={team.logo} alt={team.name} style={{
-              width: 90,
-              height: 90,
-              objectFit: 'contain',
+              width: 220,
+              height: 120,
+              objectFit: 'inherit',
               marginBottom: '1rem',
               filter: 'drop-shadow(0 2px 8px #0003)'
             }} />
@@ -71,7 +82,7 @@ const DashboardPage: React.FC = () => {
               fontWeight: 600,
             }}>
               <span>Purse:</span>
-              <span style={{ color: '#009688' }}>₹{team.purse.toLocaleString()}</span>
+              <span style={{ color: '#009688' }}>₹{typeof team.purse === 'number' ? team.purse.toLocaleString() : 'N/A'}</span>
             </div>
             <div style={{
               display: 'flex',
@@ -82,7 +93,7 @@ const DashboardPage: React.FC = () => {
               fontWeight: 600,
             }}>
               <span>Remaining:</span>
-              <span style={{ color: '#ff5722' }}>₹{team.remainingPurse.toLocaleString()}</span>
+              <span style={{ color: '#ff5722' }}>₹{typeof team.remainingPurse === 'number' ? team.remainingPurse.toLocaleString() : 'N/A'}</span>
             </div>
             <div style={{
               background: '#e3f2fd',

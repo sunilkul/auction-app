@@ -1,0 +1,31 @@
+.wheel-spin-animate {
+  animation: wheel-spin-keyframes 2.8s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+@keyframes wheel-spin-keyframes {
+  0% {
+    filter: blur(2px) brightness(1.2);
+    box-shadow: 0 0 0px #fff0;
+  }
+  10% {
+    filter: blur(1.5px) brightness(1.1);
+    box-shadow: 0 0 12px #fff6;
+  }
+  60% {
+    filter: blur(0.5px) brightness(1.05);
+    box-shadow: 0 0 24px #fff8;
+  }
+  80% {
+    filter: blur(0.2px) brightness(1.01);
+    box-shadow: 0 0 8px #fff4;
+  }
+  100% {
+    filter: blur(0px) brightness(1);
+    box-shadow: 0 0 0px #fff0;
+  }
+}
+
+.wheel-glow {
+  box-shadow: 0 0 32px 8px #fff6, 0 0 0 4px #fff2;
+  transition: box-shadow 0.3s;
+}

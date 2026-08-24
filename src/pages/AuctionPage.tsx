@@ -8,24 +8,30 @@ interface Bid {
   time: string;
 }
 
-const BID_INCREMENT = 1000000; // 10 Lakhs
+const BID_INCREMENT = 2000; // 10 Lakhs
 
 const AuctionPage: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
   const [currentPlayerIdx, setCurrentPlayerIdx] = useState(0);
-  const [currentBid, setCurrentBid] = useState<number | null>(null);
+  const [currentBid, setCurrentBid] = useState<number>(0);
   const [currentBidTeam, setCurrentBidTeam] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [auctionPlayers, setAuctionPlayers] = useState<Player[]>([]);
   const [teamPurse, setTeamPurse] = useState<{ [teamId: number]: number }>({});
   const [selectedSkill, setSelectedSkill] = useState<number>(0);
+  const [selectedGroupCode, setSelectedGroupCode] = useState('');
   interface Skill {
     id: number;
     skillName: string;
   }
+  interface SkillGroup {
+    skillId: number;
+    groupCode: string;
+  }
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [skillGroups, setSkillGroups] = useState<SkillGroup[]>([]);
   const [auctionStarted, setAuctionStarted] = useState(false);
 
   // Helper to shuffle array
@@ -44,10 +50,20 @@ const AuctionPage: React.FC = () => {
     // });
     fetch('http://localhost:8282/api/players')
       .then(res => res.json())
-      .then((data: Player[]) => {
-        setPlayers(data);
+      .then((data: any) => {
+        // Ensure players is always an array
+        if (Array.isArray(data)) {
+          setPlayers(data);
+        } else if (data && typeof data === 'object') {
+          setPlayers([data]);
+        } else {
+          setPlayers([]);
+        }
       })
-      .catch(err => console.error('Failed to fetch players:', err));
+      .catch(err => {
+        setPlayers([]);
+        console.error('Failed to fetch players:', err);
+      });
     // fetch('/teams.json').then(res => res.json()).then((data: Team[]) => {
     //   setTeams(data);
     //   setTeamPurse(Object.fromEntries(data.map(t => [t.id, t.remainingPurse])));
@@ -67,26 +83,38 @@ const AuctionPage: React.FC = () => {
         if (data.length > 0) setSelectedSkill(data[0].id);
       })
       .catch(err => console.error('Failed to fetch skills:', err));
+    fetch('http://localhost:8282/api/groups')
+      .then(res => res.json())
+      .then((data: SkillGroup[]) => setSkillGroups(data))
+      .catch(err => console.error('Failed to fetch groups:', err));
   }, []);
+
+  const availableGroups = selectedSkill > 0
+    ? skillGroups.filter(group => Number(group.skillId) === selectedSkill)
+    : [];
+
+  useEffect(() => {
+    setSelectedGroupCode('');
+  }, [selectedSkill]);
 
   // Update auctionPlayers when players or selectedSkill changes
   useEffect(() => {
-    if (selectedSkill === 0 || !auctionStarted) {
+    if (selectedSkill <= 0 || !selectedGroupCode || !auctionStarted) {
       setAuctionPlayers([]);
       return;
     }
     const filtered = players.filter(p =>
-      p.status === 'UNSOLD' &&
-      p.skillId === selectedSkill
+      p.status === 'NOT_ASSIGNED' &&
+      Number(p.skillId) === selectedSkill &&
+      p.groupCode === selectedGroupCode
     );
     setAuctionPlayers(shuffle(filtered));
     setCurrentPlayerIdx(0);
-  }, [players, selectedSkill, auctionStarted]);
+  }, [players, selectedSkill, selectedGroupCode, auctionStarted]);
   useEffect(() => {
     // Reset bid when player changes
     if (auctionPlayers.length > 0) {
-      const player = auctionPlayers[currentPlayerIdx];
-      setCurrentBid(player.basePrice);
+      setCurrentBid(0);
       setCurrentBidTeam(null);
       setError('');
     }
@@ -96,18 +124,29 @@ const AuctionPage: React.FC = () => {
     return (
       <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #fff 0%, #e0e7ff 100%)', padding: '2rem', width: '100vw', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <h1 style={{ textAlign: 'center', fontSize: '2.5rem', fontWeight: 900, color: '#0f2027', marginBottom: '2rem' }}>Start EPL Auction</h1>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-          <label style={{ fontWeight: 600, fontSize: 16, marginRight: 10 }}>Select Skill:</label>
-          <select value={selectedSkill} onChange={e => setSelectedSkill(Number(e.target.value))} style={{ fontSize: 16, padding: '4px 12px', borderRadius: 6, border: '1px solid #1976d2' }}>
-            <option value={0} disabled>Select skill</option>
-            {skills.map(skill => (
-              <option key={skill.id} value={skill.id}>{skill.skillName}</option>
-            ))}
-          </select>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 24 }}>
+          <label style={{ fontWeight: 600, fontSize: 16 }}>
+            Select Skill:
+            <select value={selectedSkill} onChange={e => setSelectedSkill(Number(e.target.value))} style={{ marginLeft: 10, fontSize: 16, padding: '4px 12px', borderRadius: 6, border: '1px solid #1976d2' }}>
+              <option value={0} disabled>Select skill</option>
+              {skills.map(skill => (
+                <option key={skill.id} value={skill.id}>{skill.skillName}</option>
+              ))}
+            </select>
+          </label>
+          <label style={{ fontWeight: 600, fontSize: 16 }}>
+            Select Group:
+            <select value={selectedGroupCode} onChange={e => setSelectedGroupCode(e.target.value)} disabled={!selectedSkill || availableGroups.length === 0} style={{ marginLeft: 10, fontSize: 16, padding: '4px 12px', borderRadius: 6, border: '1px solid #1976d2' }}>
+              <option value="" disabled>Select group</option>
+              {availableGroups.map(group => (
+                <option key={group.groupCode} value={group.groupCode}>{group.groupCode}</option>
+              ))}
+            </select>
+          </label>
         </div>
         <button
-          disabled={!selectedSkill}
-          style={{ fontSize: 18, padding: '8px 32px', borderRadius: 8, background: '#1976d2', color: '#fff', fontWeight: 700, border: 'none', cursor: selectedSkill ? 'pointer' : 'not-allowed' }}
+          disabled={!selectedSkill || !selectedGroupCode}
+          style={{ fontSize: 18, padding: '8px 32px', borderRadius: 8, background: '#1976d2', color: '#fff', fontWeight: 700, border: 'none', cursor: selectedSkill && selectedGroupCode ? 'pointer' : 'not-allowed' }}
           onClick={() => setAuctionStarted(true)}
         >
           Start Auction
@@ -121,12 +160,48 @@ const AuctionPage: React.FC = () => {
   const handleBid = (teamId: number, up: boolean) => {
     setError('');
     const purse = teamPurse[teamId];
-    const nextBid = up ? (currentBid! + BID_INCREMENT) : (currentBid! - BID_INCREMENT);
-    if (up && purse < nextBid) {
-      setError('Insufficient funds to bid.');
+    // Up bid logic
+    if (up) {
+      if (currentBid === 0) {
+        // First up bid sets to base price
+        if (purse < player.basePrice) {
+          setError('Insufficient funds to bid.');
+          return;
+        }
+        setCurrentBid(player.basePrice);
+        setCurrentBidTeam(teamId);
+        setBids([...bids, {
+          playerId: player.id,
+          teamId,
+          amount: player.basePrice,
+          time: new Date().toLocaleTimeString()
+        }]);
+        return;
+      } else {
+        // Subsequent up bids increase by BID_INCREMENT
+        const nextBid = currentBid + BID_INCREMENT;
+        if (purse < nextBid) {
+          setError('Insufficient funds to bid.');
+          return;
+        }
+        setCurrentBid(nextBid);
+        setCurrentBidTeam(teamId);
+        setBids([...bids, {
+          playerId: player.id,
+          teamId,
+          amount: nextBid,
+          time: new Date().toLocaleTimeString()
+        }]);
+        return;
+      }
+    }
+    // Down bid logic
+    if (currentBid === player.basePrice || currentBid === 0) {
+      setError('Bid is already at base price.');
       return;
     }
-    if (!up && nextBid < player.basePrice) {
+    const nextBid = currentBid - BID_INCREMENT;
+    if (nextBid < player.basePrice) {
       setError('Bid cannot go below base price.');
       return;
     }
@@ -145,7 +220,10 @@ const AuctionPage: React.FC = () => {
       setError('Select a team to sell the player.');
       return;
     }
-    // Call backend to update auction result
+
+    const soldAmount = currentBid > 0 ? currentBid : player.basePrice;
+    const nextRemainingPurse = (teamPurse[currentBidTeam] ?? 0) - soldAmount;
+
     try {
       await fetch('http://localhost:8282/api/players/auction', {
         method: 'POST',
@@ -153,7 +231,7 @@ const AuctionPage: React.FC = () => {
         body: JSON.stringify({
           playerId: player.id,
           teamId: currentBidTeam,
-          soldPrice: currentBid ?? player.basePrice,
+          soldPrice: soldAmount,
           status: 'SOLD'
         })
       });
@@ -161,24 +239,16 @@ const AuctionPage: React.FC = () => {
       setError('Failed to update auction result.');
       return;
     }
-    // Update player status and assign to team locally
-    const updatedPlayers = players.map(p =>
-      p.id === player.id
-        ? {
-            ...p,
-            status: 'SOLD' as 'SOLD',
-            soldPrice: currentBid ?? p.basePrice,
-            teamId: currentBidTeam
-          }
-        : p
-    );
-    setPlayers(updatedPlayers);
-    setAuctionPlayers(auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx));
-    setTeamPurse({
-      ...teamPurse,
-      [currentBidTeam]: teamPurse[currentBidTeam] - (currentBid || 0)
-    });
-    setCurrentPlayerIdx(idx => idx >= auctionPlayers.length - 1 ? 0 : idx);
+
+    const nextAuctionPlayers = auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx);
+
+    setPlayers(prevPlayers => prevPlayers.filter(p => p.id !== player.id));
+    setAuctionPlayers(nextAuctionPlayers);
+    setTeamPurse(prevPurse => ({
+      ...prevPurse,
+      [currentBidTeam]: nextRemainingPurse
+    }));
+    setCurrentPlayerIdx(idx => (idx >= nextAuctionPlayers.length - 1 ? 0 : idx));
     setError('');
   };
 
@@ -200,22 +270,24 @@ const AuctionPage: React.FC = () => {
       return;
     }
     // Mark player as unsold and move to next locally
-    setAuctionPlayers(auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx));
-    setCurrentPlayerIdx(idx => idx >= auctionPlayers.length - 1 ? 0 : idx);
-    setError('');
+  setPlayers(players.filter(p => p.id !== player.id));
+  setAuctionPlayers(auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx));
+  setCurrentPlayerIdx(idx => idx >= auctionPlayers.length - 1 ? 0 : idx);
+  setError('');
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #fff 0%, #e0e7ff 100%)', padding: '2rem', width: '100vw', boxSizing: 'border-box' }}>
-      <h1 style={{ textAlign: 'center', fontSize: '2.5rem', fontWeight: 900, color: '#0f2027', marginBottom: '2rem' }}>Live EPL Auction</h1>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #fff 0%, #e0e7ff 100%)', padding: '0.5rem', width: '100vw', boxSizing: 'border-box' }}>
+      <h1 className="auction-title">Live EPL 8 Auction</h1>
   {/* ...existing code... */}
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 260px', gap: 32, width: '100%', maxWidth: '1600px', margin: '0 auto', alignItems: 'start' }}>
         {/* Player Info */}
-        <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px #0001', padding: 18, minWidth: 140, maxWidth: 220, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src={player.photo} alt={player.name} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '50%', margin: '0 auto 10px' }} />
+        <div key={player.id} id="playerInfo" className="player-info-enter" style={{ background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px #0001', padding: 18, minWidth: 140, maxWidth: 220, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <img src={player.photo} alt={player.name} style={{ width: 220, height: 120, objectFit: 'cover', borderRadius: '50%', margin: '0 auto 10px' }} />
           <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1976d2', textAlign: 'center', margin: 0 }}>{player.name}</h2>
-          <div style={{ fontSize: 13, color: player.isNewPlayer === 1 ? '#43a047' : '#888', fontWeight: 600, marginBottom: 6 }}>
-            {player.isNewPlayer === 1 ? 'New Player' : 'Old Player'}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, color: player.isNewPlayer === 1 ? '#43a047' : '#888', fontWeight: 600, marginBottom: 6 }}>
+            <span>{player.isNewPlayer === 1 ? 'New Player' : 'Old Player'}</span>
+            <span style={{ color: '#1976d2' }}>Group: {player.groupCode || '-'}</span>
           </div>
           {/* Player stats instead of photo */}
           <table style={{ width: '100%', fontSize: 13, margin: '10px 0' }}>
@@ -266,13 +338,30 @@ const AuctionPage: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center',
             }}>
-              <img src={team.logo} alt={team.name} style={{ width: 22, height: 22, objectFit: 'contain', marginBottom: 2 }} />
-              <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 2 }}>{team.name}</div>
-              <div style={{ fontSize: 10, color: '#009688', marginBottom: 2 }}>₹{teamPurse[team.id]?.toLocaleString()}</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 , width: '100%', marginBottom: 6 }}>
+                <img src={team.logo} alt={team.name} style={{ width: 50, height: 44, objectFit: 'inherit', flexShrink: 0 }} />
+                <div style={{ minWidth: 0, textAlign: 'left' }}>
+                  <div style={{ fontWeight: 700, fontSize: 11, lineHeight: 1.15 }}>{team.name}</div>
+                  <div style={{ fontSize: 12, color: '#009688', marginTop: 4, fontWeight: 700 }}>₹{teamPurse[team.id]?.toLocaleString()}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 10, color: '#333', marginBottom: 1 }}>
+                <span style={{ fontWeight: 600 }}>POC1:</span> <b>{team.poc1 || '-'}</b>
+              </div>
+              <div style={{ fontSize: 10, color: '#333', marginBottom: 2 }}>
+                <span style={{ fontWeight: 600 }}>POC2:</span> <b>{team.poc2 || '-'}</b>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'center', marginTop: 4 }}>
                 <span style={{ fontWeight: 600, fontSize: 13, marginRight: 2 }}>Bid</span>
-                <button onClick={() => handleBid(team.id, true)} style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 6px', minWidth: 24, minHeight: 22, cursor: 'pointer', fontSize: 13, fontWeight: 700, marginRight: 2 }}>↑</button>
-                <button onClick={() => handleBid(team.id, false)} style={{ background: '#ff5722', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 6px', minWidth: 24, minHeight: 22, cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>↓</button>
+                <button
+                  onClick={() => handleBid(team.id, true)}
+                  style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 6px', minWidth: 24, minHeight: 22, cursor: 'pointer', fontSize: 13, fontWeight: 700, marginRight: 2 }}
+                >↑</button>
+                <button
+                  onClick={() => handleBid(team.id, false)}
+                  disabled={currentBid === player.basePrice || currentBid === 0}
+                  style={{ background: '#ff5722', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 6px', minWidth: 24, minHeight: 22, cursor: (currentBid === player.basePrice || currentBid === 0) ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, opacity: (currentBid === player.basePrice || currentBid === 0) ? 0.5 : 1 }}
+                >↓</button>
               </div>
             </div>
           ))}

@@ -3,6 +3,7 @@ import DashboardPage from './pages/DashboardPage';
 import AuctionPage from './pages/AuctionPage';
 import PlayerManagementPage from './pages/PlayerManagementPage';
 import TeamPage from './pages/TeamPage';
+import WheelPickerPage from './pages/WheelPickerPage';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 
 const App: React.FC = () => {
@@ -12,13 +13,15 @@ const App: React.FC = () => {
         <Link to="/" style={{ color: '#fff', marginRight: 16 }}>Dashboard</Link>
         <Link to="/auction" style={{ color: '#fff', marginRight: 16 }}>Auction</Link>
         <Link to="/players" style={{ color: '#fff', marginRight: 16 }}>Players</Link>
-        <Link to="/teams/1" style={{ color: '#fff' }}>Team</Link>
+        <Link to="/teams/1" style={{ color: '#fff', marginRight: 16 }}>Team</Link>
+        <Link to="/wheel-picker" style={{ color: '#fff' }}>Wheel Picker</Link>
       </nav>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/auction" element={<AuctionPage />} />
         <Route path="/players" element={<PlayerManagementPage />} />
         <Route path="/teams/:id" element={<TeamPage />} />
+        <Route path="/wheel-picker" element={<WheelPickerPage />} />
       </Routes>
     </BrowserRouter>
   );

@@ -12,14 +12,17 @@ export interface Player {
   id: number;
   name: string;
   skillId: number;
-  skillName: string;  
+  skillName: string;
+  groupId: number;
+  groupName: string;
   photo: string;
   basePrice: number;
   soldPrice: number | null;
   teamId: number | null;
   teamName?: string;
-  status: 'SOLD' | 'UNSOLD';
+  status: 'SOLD' | 'UNSOLD' | 'NOT_ASSIGNED';
   stats: Record<string, number>;
-  isNewPlayer:number;
-
+  isNewPlayer: number;
+  groupCode: string;
+  isConsideredForAuction: number;
 }
