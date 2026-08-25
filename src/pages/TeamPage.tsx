@@ -11,7 +11,7 @@ const TeamPage: React.FC = () => {
 
   useEffect(() => {
     fetch('http://localhost:8282/api/teams').then(res => res.json()).then(setTeams);
-    fetch('http://localhost:8282/api/players').then(res => res.json()).then(setPlayers);
+    fetch('http://localhost:8282/api/players/all-players').then(res => res.json()).then(setPlayers);
   }, []);
 
   const handleTeamClick = (team: Team) => {
