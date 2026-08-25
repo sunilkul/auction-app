@@ -143,6 +143,7 @@ const AuctionPage: React.FC = () => {
   const [introExiting, setIntroExiting] = useState(false);
   const [introPlayer, setIntroPlayer] = useState<Player | null>(null);
   const introShownForRef = useRef<number | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'group' | null>(null);
 
   function shuffle<T>(array: T[]): T[] {
     const arr = [...array];
@@ -229,6 +230,14 @@ const AuctionPage: React.FC = () => {
       @keyframes pi-countdown{from{width:100%}to{width:0%}}
       @keyframes pi-shimmer{0%{transform:translateX(-220%) skewX(-20deg);opacity:0}15%{opacity:0.9}100%{transform:translateX(380%) skewX(-20deg);opacity:0}}
       @keyframes pi-beam{from{opacity:0;transform:scaleY(0)}to{opacity:1;transform:scaleY(1)}}
+      @keyframes setup-fade-up{0%{opacity:0;transform:translateY(28px)}100%{opacity:1;transform:translateY(0)}}
+      @keyframes setup-scale-in{0%{opacity:0;transform:scale(0.93) translateY(18px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+      @keyframes setup-expand{0%{opacity:0;transform:scaleX(0)}100%{opacity:1;transform:scaleX(1)}}
+      @keyframes orb-float{0%,100%{transform:translate(0,0) scale(1)}38%{transform:translate(22px,-32px) scale(1.06)}68%{transform:translate(-16px,20px) scale(0.94)}}
+      @keyframes launch-pulse{0%,100%{box-shadow:0 0 28px rgba(0,120,194,0.55),0 8px 32px rgba(0,0,0,0.4)}50%{box-shadow:0 0 55px rgba(0,150,220,0.85),0 8px 50px rgba(0,0,0,0.5)}}
+      @keyframes dropdown-appear{0%{opacity:0;transform:translateY(-6px) scale(0.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes skill-select{0%{transform:scale(1)}50%{transform:scale(0.95)}100%{transform:scale(1)}}
+      @keyframes title-glow{0%,100%{text-shadow:0 0 40px rgba(0,200,255,0.15)}50%{text-shadow:0 0 80px rgba(0,200,255,0.35),0 0 120px rgba(0,200,255,0.15)}}
     `;
     document.head.appendChild(s);
   }, []);
@@ -264,109 +273,239 @@ const AuctionPage: React.FC = () => {
   /* ── Setup screen ─────────────────────────────────────────────────── */
   if (!auctionStarted) {
     const canStart = !!(selectedSkill && selectedGroupCode);
-    const selectStyle: React.CSSProperties = {
-      marginLeft: 10,
-      fontSize: 14,
-      padding: '9px 16px',
-      borderRadius: 8,
-      border: '1px solid rgba(0,0,0,0.14)',
-      background: '#FFFFFF',
-      color: '#1A3362',
-      outline: 'none',
-      fontFamily: "'Inter', system-ui, sans-serif",
+    const selectedSkillObj = skills.find(s => s.id === selectedSkill);
+
+    // Skill color palette matching team card accents
+    const skillAccent = (name: string) => {
+      const k = name.toUpperCase();
+      if (k.includes('BAT')) return { color: '#00A85A', bg: 'rgba(0,168,90,0.09)', border: 'rgba(0,168,90,0.30)' };
+      if (k.includes('BOWL')) return { color: '#E5283F', bg: 'rgba(229,40,63,0.09)', border: 'rgba(229,40,63,0.28)' };
+      if (k.includes('ALL')) return { color: '#F5A623', bg: 'rgba(245,166,35,0.09)', border: 'rgba(245,166,35,0.30)' };
+      return { color: '#0078C2', bg: 'rgba(0,120,194,0.09)', border: 'rgba(0,120,194,0.28)' };
     };
 
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: BG,
-        padding: '2rem',
-        width: '100vw',
-        boxSizing: 'border-box',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+      <div
+        style={{
+          minHeight: '100vh',
+          background: BG,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          padding: '2rem', position: 'relative',
+        }}
+        onClick={() => openDropdown && setOpenDropdown(null)}
+      >
+
+        {/* Title */}
         <div style={{
           fontFamily: "'Barlow Condensed', sans-serif",
-          fontSize: 'clamp(2.5rem, 5vw, 4rem)',
-          fontWeight: 900,
-          color: '#005A8E',
-          letterSpacing: 4,
-          textTransform: 'uppercase',
-          textAlign: 'center',
-          marginBottom: '0.5rem',
+          fontSize: 'clamp(2.8rem, 6vw, 5rem)',
+          fontWeight: 900, color: '#005A8E',
+          letterSpacing: 5, textTransform: 'uppercase',
+          lineHeight: 1, textAlign: 'center',
+          textShadow: '0 0 24px rgba(0,90,142,0.14), 0 2px 4px rgba(0,0,0,0.08)',
+          marginBottom: 10,
+          animation: 'setup-fade-up 0.5s ease-out 0.1s both',
         }}>EPL Auction</div>
-        <div style={{
-          fontFamily: "'Barlow Condensed', sans-serif",
-          fontSize: '0.85rem',
-          fontWeight: 600,
-          letterSpacing: 6,
-          color: '#6B7FA0',
-          textTransform: 'uppercase',
-          marginBottom: '2.5rem',
-        }}>Select skill &amp; group to begin</div>
 
         <div style={{
-          background: 'rgba(255,255,255,0.92)',
-          border: '1px solid rgba(0,0,0,0.10)',
-          borderRadius: 16,
-          padding: '2rem 2.5rem',
+          fontSize: 10, fontWeight: 700, letterSpacing: 5.5,
+          color: '#8A9AB8', textTransform: 'uppercase',
+          marginBottom: 10,
+          animation: 'setup-fade-up 0.5s ease-out 0.18s both',
+        }}>Select Skill &amp; Group to Begin</div>
+
+        {/* Divider */}
+        <div style={{
+          width: 72, height: 2,
+          background: 'linear-gradient(90deg, transparent, rgba(0,90,142,0.35), transparent)',
+          margin: '0 auto 36px',
+          animation: 'setup-expand 0.55s ease-out 0.28s both',
+        }} />
+
+        {/* Card */}
+        <div style={{
+          background: 'rgba(255,255,255,0.93)',
+          border: '1px solid rgba(43,114,212,0.11)',
+          borderRadius: 18,
+          padding: '32px 32px 28px',
           backdropFilter: 'blur(14px)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 18,
-          minWidth: 360,
+          boxShadow: '0 8px 40px rgba(0,0,0,0.09), inset 0 1px 0 rgba(255,255,255,0.9)',
+          width: '100%', maxWidth: 460,
+          animation: 'setup-scale-in 0.6s cubic-bezier(0.22,1,0.36,1) 0.3s both',
         }}>
-          <label style={{ fontWeight: 600, fontSize: 12, color: '#6B7FA0', letterSpacing: 1.5, textTransform: 'uppercase', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            Skill
-            <select value={selectedSkill} onChange={e => setSelectedSkill(Number(e.target.value))} style={selectStyle}>
-              <option value={0} disabled>Select skill</option>
-              {skills.map(skill => (
-                <option key={skill.id} value={skill.id}>{skill.skillName}</option>
-              ))}
-            </select>
-          </label>
 
-          <label style={{ fontWeight: 600, fontSize: 12, color: '#6B7FA0', letterSpacing: 1.5, textTransform: 'uppercase', display: 'flex', flexDirection: 'column', gap: 6 }}>
-            Group
-            <select
-              value={selectedGroupCode}
-              onChange={e => setSelectedGroupCode(e.target.value)}
-              disabled={!selectedSkill || availableGroups.length === 0}
-              style={{ ...selectStyle, opacity: (!selectedSkill || availableGroups.length === 0) ? 0.45 : 1 }}
-            >
-              <option value="" disabled>Select group</option>
-              {availableGroups.map(group => (
-                <option key={group.groupCode} value={group.groupCode}>{group.groupCode}</option>
-              ))}
-            </select>
-          </label>
+          {/* 01 · Skill */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{
+              fontSize: 9, fontWeight: 800, letterSpacing: 3,
+              color: '#8A9AB8', textTransform: 'uppercase',
+              marginBottom: 12, display: 'flex', alignItems: 'center', gap: 7,
+            }}>
+              <span style={{ fontSize: 11, color: '#0078C2', fontFamily: "'Space Mono', monospace" }}>01</span>
+              <span style={{ opacity: 0.4 }}>·</span>
+              Select Skill
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {skills.map(skill => {
+                const isActive = selectedSkill === skill.id;
+                const acc = skillAccent(skill.skillName);
+                return (
+                  <button
+                    key={skill.id}
+                    onClick={() => { setSelectedSkill(skill.id); setSelectedGroupCode(''); setOpenDropdown(null); }}
+                    style={{
+                      flex: 1, minWidth: 90, padding: '12px 8px',
+                      borderRadius: 10,
+                      border: `1px solid ${isActive ? acc.border : 'rgba(43,114,212,0.12)'}`,
+                      borderBottom: `3px solid ${isActive ? acc.color : 'rgba(43,114,212,0.12)'}`,
+                      background: isActive ? acc.bg : 'rgba(255,255,255,0.85)',
+                      color: isActive ? acc.color : '#6B7FA0',
+                      cursor: 'pointer',
+                      fontFamily: "'Barlow Condensed', sans-serif",
+                      fontSize: 14, fontWeight: 800, letterSpacing: 1.5,
+                      textTransform: 'uppercase',
+                      transition: 'all 0.18s',
+                      boxShadow: isActive
+                        ? `0 0 14px ${acc.color}22, 0 4px 12px rgba(0,0,0,0.06)`
+                        : '0 2px 6px rgba(0,0,0,0.04)',
+                    }}
+                  >
+                    {skill.skillName.replace(/_/g, ' ')}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
+          {/* 02 · Group */}
+          <div style={{ marginBottom: 26, opacity: selectedSkill ? 1 : 0.45, transition: 'opacity 0.3s' }}>
+            <div style={{
+              fontSize: 9, fontWeight: 800, letterSpacing: 3,
+              color: '#8A9AB8', textTransform: 'uppercase',
+              marginBottom: 12, display: 'flex', alignItems: 'center', gap: 7,
+            }}>
+              <span style={{ fontSize: 11, color: '#0078C2', fontFamily: "'Space Mono', monospace" }}>02</span>
+              <span style={{ opacity: 0.4 }}>·</span>
+              Select Group
+            </div>
+
+            <div style={{ position: 'relative', zIndex: 10 }} onClick={e => e.stopPropagation()}>
+              {/* Trigger */}
+              <button
+                onClick={() => selectedSkill && setOpenDropdown(openDropdown === 'group' ? null : 'group')}
+                disabled={!selectedSkill || availableGroups.length === 0}
+                style={{
+                  width: '100%', padding: '12px 16px',
+                  borderRadius: 10,
+                  border: selectedGroupCode
+                    ? '1px solid rgba(0,120,194,0.40)'
+                    : '1px solid rgba(43,114,212,0.14)',
+                  borderBottom: `3px solid ${selectedGroupCode ? '#0078C2' : 'rgba(43,114,212,0.14)'}`,
+                  background: selectedGroupCode ? 'rgba(0,120,194,0.07)' : 'rgba(255,255,255,0.85)',
+                  color: selectedGroupCode ? '#005A8E' : '#8A9AB8',
+                  cursor: selectedSkill && availableGroups.length > 0 ? 'pointer' : 'not-allowed',
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontSize: 15, fontWeight: 800, letterSpacing: 2,
+                  textTransform: 'uppercase',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  transition: 'all 0.18s',
+                  boxShadow: selectedGroupCode ? '0 0 12px rgba(0,120,194,0.14), 0 2px 8px rgba(0,0,0,0.05)' : '0 2px 6px rgba(0,0,0,0.04)',
+                }}
+              >
+                <span>{selectedGroupCode
+                  ? `Group ${selectedGroupCode}`
+                  : availableGroups.length === 0 ? 'Select skill first' : 'Choose a group…'
+                }</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  style={{ transform: openDropdown === 'group' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', opacity: 0.45, flexShrink: 0 }}>
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+
+              {/* Panel */}
+              {openDropdown === 'group' && availableGroups.length > 0 && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
+                  background: 'rgba(255,255,255,0.98)',
+                  backdropFilter: 'blur(14px)',
+                  border: '1px solid rgba(43,114,212,0.14)',
+                  borderRadius: 10, overflow: 'hidden', zIndex: 10,
+                  boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
+                  animation: 'dropdown-appear 0.18s ease-out both',
+                }}>
+                  {availableGroups.map((group, gi) => {
+                    const isChosen = selectedGroupCode === group.groupCode;
+                    return (
+                      <button
+                        key={group.groupCode}
+                        onClick={() => { setSelectedGroupCode(group.groupCode); setOpenDropdown(null); }}
+                        style={{
+                          width: '100%', padding: '12px 18px',
+                          background: isChosen ? 'rgba(0,120,194,0.08)' : 'transparent',
+                          border: 'none',
+                          borderBottom: gi < availableGroups.length - 1 ? '1px solid rgba(43,114,212,0.07)' : 'none',
+                          color: isChosen ? '#005A8E' : '#4A6080',
+                          cursor: 'pointer',
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          fontSize: 16, fontWeight: 800, letterSpacing: 2,
+                          textTransform: 'uppercase', textAlign: 'left',
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          transition: 'background 0.12s, color 0.12s',
+                        }}
+                        onMouseEnter={e => { if (!isChosen) { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,120,194,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = '#005A8E'; } }}
+                        onMouseLeave={e => { if (!isChosen) { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = '#4A6080'; } }}
+                      >
+                        <span style={{ fontSize: 11, color: isChosen ? '#0078C2' : '#C0CCDB' }}>
+                          {isChosen ? '●' : '○'}
+                        </span>
+                        Group {group.groupCode}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Launch */}
           <button
             disabled={!canStart}
-            onClick={() => setAuctionStarted(true)}
+            onClick={() => { setAuctionStarted(true); setOpenDropdown(null); }}
             style={{
-              marginTop: 8,
-              fontSize: 17,
-              padding: '13px 0',
+              width: '100%', padding: '16px 0',
               borderRadius: 10,
-              background: canStart ? '#0078C2' : 'rgba(0,120,194,0.2)',
-              color: canStart ? '#04080F' : '#5E7A9E',
-              fontWeight: 800,
               border: 'none',
+              background: canStart ? '#0078C2' : 'rgba(0,120,194,0.18)',
+              color: canStart ? '#FFFFFF' : '#7A9AB8',
               cursor: canStart ? 'pointer' : 'not-allowed',
               fontFamily: "'Barlow Condensed', sans-serif",
-              letterSpacing: 3,
+              fontSize: 20, fontWeight: 900, letterSpacing: 4,
               textTransform: 'uppercase',
-              boxShadow: canStart ? '0 0 30px rgba(0,120,194,0.3)' : 'none',
-              transition: 'all 0.2s',
+              boxShadow: canStart ? '0 0 28px rgba(0,120,194,0.35), 0 6px 20px rgba(0,0,0,0.12)' : 'none',
+              transition: 'all 0.22s',
+              position: 'relative', overflow: 'hidden',
             }}
+            onMouseEnter={e => { if (canStart) (e.currentTarget as HTMLButtonElement).style.background = '#005A8E'; }}
+            onMouseLeave={e => { if (canStart) (e.currentTarget as HTMLButtonElement).style.background = '#0078C2'; }}
           >
+            {canStart && (
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent)', animation: 'pi-shimmer 3s ease-in-out 0.6s infinite' }} />
+            )}
             Launch Auction
           </button>
+        </div>
+
+        {/* Bottom hint */}
+        <div style={{
+          marginTop: 20, fontSize: 10, color: '#A0AFC8',
+          letterSpacing: 2.5, textTransform: 'uppercase',
+          fontFamily: "'Barlow Condensed', sans-serif",
+          animation: 'setup-fade-up 0.5s ease-out 0.6s both',
+        }}>
+          {selectedSkill && selectedGroupCode
+            ? `${selectedSkillObj?.skillName?.replace(/_/g, ' ') ?? ''} · Group ${selectedGroupCode} · Ready`
+            : 'Select skill & group to begin'}
         </div>
       </div>
     );
