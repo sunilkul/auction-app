@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Player, Team } from '../types';
 
 interface Bid {
@@ -8,7 +8,117 @@ interface Bid {
   time: string;
 }
 
-const BID_INCREMENT = 2000; // 10 Lakhs
+const BID_INCREMENT = 2000;
+const BG = 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(235,242,252,0.92) 100%), url(/iStock-2163573192_web.jpg) center/cover no-repeat fixed';
+
+const FW_COLORS = ['#00D97E', '#FFD700', '#00E5FF', '#FF6B6B', '#FFFFFF', '#FF69B4', '#A78BFA', '#FFA500'];
+
+interface FWParticle {
+  x: number; y: number;
+  vx: number; vy: number;
+  life: number; decay: number;
+  color: string; size: number;
+  trail: { x: number; y: number }[];
+}
+
+const FireworksCanvas: React.FC = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const particles: FWParticle[] = [];
+
+    const burst = (x: number, y: number) => {
+      const count = 90 + Math.floor(Math.random() * 30);
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+        const speed = 3 + Math.random() * 7;
+        particles.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed - 1,
+          life: 1,
+          decay: 0.012 + Math.random() * 0.010,
+          color: FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)],
+          size: 2.5 + Math.random() * 2.5,
+          trail: [],
+        });
+      }
+    };
+
+    const schedule = [
+      [200,  0.5, 0.22], [550,  0.25, 0.18], [550,  0.75, 0.18],
+      [900,  0.5, 0.35], [1150, 0.15, 0.28], [1150, 0.85, 0.28],
+      [1500, 0.35, 0.15], [1500, 0.65, 0.15],
+      [1900, 0.5, 0.25], [2200, 0.3, 0.32], [2200, 0.7, 0.32],
+    ];
+    const timers = schedule.map(([delay, fx, fy]) =>
+      window.setTimeout(() => burst(canvas.width * fx, canvas.height * fy), delay)
+    );
+
+    let animId: number;
+    const draw = () => {
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.trail.push({ x: p.x, y: p.y });
+        if (p.trail.length > 5) p.trail.shift();
+
+        p.x  += p.vx;
+        p.y  += p.vy;
+        p.vy += 0.12;
+        p.vx *= 0.97;
+        p.life -= p.decay;
+
+        if (p.life <= 0) { particles.splice(i, 1); continue; }
+
+        // trail
+        for (let t = 0; t < p.trail.length; t++) {
+          const alpha = (t / p.trail.length) * p.life * 0.4;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(p.trail[t].x, p.trail[t].y, p.size * 0.5 * (t / p.trail.length), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // head
+        ctx.globalAlpha = p.life;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = p.color;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      ctx.globalAlpha = 1;
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      timers.forEach(clearTimeout);
+      cancelAnimationFrame(animId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return (
+    <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
+  );
+};
 
 const AuctionPage: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -22,19 +132,13 @@ const AuctionPage: React.FC = () => {
   const [teamPurse, setTeamPurse] = useState<{ [teamId: number]: number }>({});
   const [selectedSkill, setSelectedSkill] = useState<number>(0);
   const [selectedGroupCode, setSelectedGroupCode] = useState('');
-  interface Skill {
-    id: number;
-    skillName: string;
-  }
-  interface SkillGroup {
-    skillId: number;
-    groupCode: string;
-  }
+  interface Skill { id: number; skillName: string; }
+  interface SkillGroup { skillId: number; groupCode: string; }
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillGroups, setSkillGroups] = useState<SkillGroup[]>([]);
   const [auctionStarted, setAuctionStarted] = useState(false);
+  const [soldAnim, setSoldAnim] = useState<{ playerName: string; teamName: string; teamLogo: string; amount: number } | null>(null);
 
-  // Helper to shuffle array
   function shuffle<T>(array: T[]): T[] {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
@@ -43,31 +147,17 @@ const AuctionPage: React.FC = () => {
     }
     return arr;
   }
+
   useEffect(() => {
-    // fetch('/players.json').then(res => res.json()).then((data: Player[]) => {
-    //   setPlayers(data);
-    //   setAuctionPlayers(data.filter(p => p.status === 'Unsold'));
-    // });
     fetch('http://localhost:8282/api/players')
       .then(res => res.json())
       .then((data: any) => {
-        // Ensure players is always an array
-        if (Array.isArray(data)) {
-          setPlayers(data);
-        } else if (data && typeof data === 'object') {
-          setPlayers([data]);
-        } else {
-          setPlayers([]);
-        }
+        if (Array.isArray(data)) setPlayers(data);
+        else if (data && typeof data === 'object') setPlayers([data]);
+        else setPlayers([]);
       })
-      .catch(err => {
-        setPlayers([]);
-        console.error('Failed to fetch players:', err);
-      });
-    // fetch('/teams.json').then(res => res.json()).then((data: Team[]) => {
-    //   setTeams(data);
-    //   setTeamPurse(Object.fromEntries(data.map(t => [t.id, t.remainingPurse])));
-    // });
+      .catch(err => { setPlayers([]); console.error('Failed to fetch players:', err); });
+
     fetch('http://localhost:8282/api/teams')
       .then(res => res.json())
       .then((data: Team[]) => {
@@ -75,7 +165,7 @@ const AuctionPage: React.FC = () => {
         setTeamPurse(Object.fromEntries(data.map(t => [t.id, t.remainingPurse])));
       })
       .catch(err => console.error('Failed to fetch teams:', err));
-    // Fetch skills for dropdown
+
     fetch('http://localhost:8282/api/skills')
       .then(res => res.json())
       .then((data: Skill[]) => {
@@ -83,6 +173,7 @@ const AuctionPage: React.FC = () => {
         if (data.length > 0) setSelectedSkill(data[0].id);
       })
       .catch(err => console.error('Failed to fetch skills:', err));
+
     fetch('http://localhost:8282/api/groups')
       .then(res => res.json())
       .then((data: SkillGroup[]) => setSkillGroups(data))
@@ -93,11 +184,8 @@ const AuctionPage: React.FC = () => {
     ? skillGroups.filter(group => Number(group.skillId) === selectedSkill)
     : [];
 
-  useEffect(() => {
-    setSelectedGroupCode('');
-  }, [selectedSkill]);
+  useEffect(() => { setSelectedGroupCode(''); }, [selectedSkill]);
 
-  // Update auctionPlayers when players or selectedSkill changes
   useEffect(() => {
     if (selectedSkill <= 0 || !selectedGroupCode || !auctionStarted) {
       setAuctionPlayers([]);
@@ -111,8 +199,8 @@ const AuctionPage: React.FC = () => {
     setAuctionPlayers(shuffle(filtered));
     setCurrentPlayerIdx(0);
   }, [players, selectedSkill, selectedGroupCode, auctionStarted]);
+
   useEffect(() => {
-    // Reset bid when player changes
     if (auctionPlayers.length > 0) {
       setCurrentBid(0);
       setCurrentBidTeam(null);
@@ -120,277 +208,694 @@ const AuctionPage: React.FC = () => {
     }
   }, [currentPlayerIdx, auctionPlayers]);
 
+  /* ── Setup screen ─────────────────────────────────────────────────── */
   if (!auctionStarted) {
+    const canStart = !!(selectedSkill && selectedGroupCode);
+    const selectStyle: React.CSSProperties = {
+      marginLeft: 10,
+      fontSize: 14,
+      padding: '9px 16px',
+      borderRadius: 8,
+      border: '1px solid rgba(0,0,0,0.14)',
+      background: '#FFFFFF',
+      color: '#1A3362',
+      outline: 'none',
+      fontFamily: "'Inter', system-ui, sans-serif",
+    };
+
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #fff 0%, #e0e7ff 100%)', padding: '2rem', width: '100vw', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <h1 style={{ textAlign: 'center', fontSize: '2.5rem', fontWeight: 900, color: '#0f2027', marginBottom: '2rem' }}>Start EPL Auction</h1>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 24 }}>
-          <label style={{ fontWeight: 600, fontSize: 16 }}>
-            Select Skill:
-            <select value={selectedSkill} onChange={e => setSelectedSkill(Number(e.target.value))} style={{ marginLeft: 10, fontSize: 16, padding: '4px 12px', borderRadius: 6, border: '1px solid #1976d2' }}>
+      <div style={{
+        minHeight: '100vh',
+        background: BG,
+        padding: '2rem',
+        width: '100vw',
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{
+          fontFamily: "'Barlow Condensed', sans-serif",
+          fontSize: 'clamp(2.5rem, 5vw, 4rem)',
+          fontWeight: 900,
+          color: '#005A8E',
+          letterSpacing: 4,
+          textTransform: 'uppercase',
+          textAlign: 'center',
+          marginBottom: '0.5rem',
+        }}>EPL Auction</div>
+        <div style={{
+          fontFamily: "'Barlow Condensed', sans-serif",
+          fontSize: '0.85rem',
+          fontWeight: 600,
+          letterSpacing: 6,
+          color: '#6B7FA0',
+          textTransform: 'uppercase',
+          marginBottom: '2.5rem',
+        }}>Select skill &amp; group to begin</div>
+
+        <div style={{
+          background: 'rgba(255,255,255,0.92)',
+          border: '1px solid rgba(0,0,0,0.10)',
+          borderRadius: 16,
+          padding: '2rem 2.5rem',
+          backdropFilter: 'blur(14px)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 18,
+          minWidth: 360,
+        }}>
+          <label style={{ fontWeight: 600, fontSize: 12, color: '#6B7FA0', letterSpacing: 1.5, textTransform: 'uppercase', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            Skill
+            <select value={selectedSkill} onChange={e => setSelectedSkill(Number(e.target.value))} style={selectStyle}>
               <option value={0} disabled>Select skill</option>
               {skills.map(skill => (
                 <option key={skill.id} value={skill.id}>{skill.skillName}</option>
               ))}
             </select>
           </label>
-          <label style={{ fontWeight: 600, fontSize: 16 }}>
-            Select Group:
-            <select value={selectedGroupCode} onChange={e => setSelectedGroupCode(e.target.value)} disabled={!selectedSkill || availableGroups.length === 0} style={{ marginLeft: 10, fontSize: 16, padding: '4px 12px', borderRadius: 6, border: '1px solid #1976d2' }}>
+
+          <label style={{ fontWeight: 600, fontSize: 12, color: '#6B7FA0', letterSpacing: 1.5, textTransform: 'uppercase', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            Group
+            <select
+              value={selectedGroupCode}
+              onChange={e => setSelectedGroupCode(e.target.value)}
+              disabled={!selectedSkill || availableGroups.length === 0}
+              style={{ ...selectStyle, opacity: (!selectedSkill || availableGroups.length === 0) ? 0.45 : 1 }}
+            >
               <option value="" disabled>Select group</option>
               {availableGroups.map(group => (
                 <option key={group.groupCode} value={group.groupCode}>{group.groupCode}</option>
               ))}
             </select>
           </label>
+
+          <button
+            disabled={!canStart}
+            onClick={() => setAuctionStarted(true)}
+            style={{
+              marginTop: 8,
+              fontSize: 17,
+              padding: '13px 0',
+              borderRadius: 10,
+              background: canStart ? '#0078C2' : 'rgba(0,120,194,0.2)',
+              color: canStart ? '#04080F' : '#5E7A9E',
+              fontWeight: 800,
+              border: 'none',
+              cursor: canStart ? 'pointer' : 'not-allowed',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              letterSpacing: 3,
+              textTransform: 'uppercase',
+              boxShadow: canStart ? '0 0 30px rgba(0,120,194,0.3)' : 'none',
+              transition: 'all 0.2s',
+            }}
+          >
+            Launch Auction
+          </button>
         </div>
-        <button
-          disabled={!selectedSkill || !selectedGroupCode}
-          style={{ fontSize: 18, padding: '8px 32px', borderRadius: 8, background: '#1976d2', color: '#fff', fontWeight: 700, border: 'none', cursor: selectedSkill && selectedGroupCode ? 'pointer' : 'not-allowed' }}
-          onClick={() => setAuctionStarted(true)}
-        >
-          Start Auction
-        </button>
       </div>
     );
   }
-  if (auctionPlayers.length === 0 || teams.length === 0) return <div>All players auctioned or no players for selected skill!</div>;
+
+  if (auctionPlayers.length === 0 || teams.length === 0) {
+    return (
+      <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: '#1A3362', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '2rem', letterSpacing: 2 }}>
+          All players auctioned or no players for selected skill!
+        </div>
+      </div>
+    );
+  }
+
   const player = auctionPlayers[currentPlayerIdx];
 
   const handleBid = (teamId: number, up: boolean) => {
     setError('');
     const purse = teamPurse[teamId];
-    // Up bid logic
     if (up) {
       if (currentBid === 0) {
-        // First up bid sets to base price
-        if (purse < player.basePrice) {
-          setError('Insufficient funds to bid.');
-          return;
-        }
+        if (purse < player.basePrice) { setError('Insufficient funds to bid.'); return; }
         setCurrentBid(player.basePrice);
         setCurrentBidTeam(teamId);
-        setBids([...bids, {
-          playerId: player.id,
-          teamId,
-          amount: player.basePrice,
-          time: new Date().toLocaleTimeString()
-        }]);
+        setBids([...bids, { playerId: player.id, teamId, amount: player.basePrice, time: new Date().toLocaleTimeString() }]);
         return;
       } else {
-        // Subsequent up bids increase by BID_INCREMENT
         const nextBid = currentBid + BID_INCREMENT;
-        if (purse < nextBid) {
-          setError('Insufficient funds to bid.');
-          return;
-        }
+        if (purse < nextBid) { setError('Insufficient funds to bid.'); return; }
         setCurrentBid(nextBid);
         setCurrentBidTeam(teamId);
-        setBids([...bids, {
-          playerId: player.id,
-          teamId,
-          amount: nextBid,
-          time: new Date().toLocaleTimeString()
-        }]);
+        setBids([...bids, { playerId: player.id, teamId, amount: nextBid, time: new Date().toLocaleTimeString() }]);
         return;
       }
     }
-    // Down bid logic
-    if (currentBid === player.basePrice || currentBid === 0) {
-      setError('Bid is already at base price.');
-      return;
-    }
+    if (currentBid === player.basePrice || currentBid === 0) { setError('Bid is already at base price.'); return; }
     const nextBid = currentBid - BID_INCREMENT;
-    if (nextBid < player.basePrice) {
-      setError('Bid cannot go below base price.');
-      return;
-    }
+    if (nextBid < player.basePrice) { setError('Bid cannot go below base price.'); return; }
     setCurrentBid(nextBid);
     setCurrentBidTeam(teamId);
-    setBids([...bids, {
-      playerId: player.id,
-      teamId,
-      amount: nextBid,
-      time: new Date().toLocaleTimeString()
-    }]);
+    setBids([...bids, { playerId: player.id, teamId, amount: nextBid, time: new Date().toLocaleTimeString() }]);
   };
 
   const handleSold = async () => {
-    if (currentBidTeam == null) {
-      setError('Select a team to sell the player.');
-      return;
-    }
-
+    if (currentBidTeam == null) { setError('Select a team to sell the player.'); return; }
     const soldAmount = currentBid > 0 ? currentBid : player.basePrice;
     const nextRemainingPurse = (teamPurse[currentBidTeam] ?? 0) - soldAmount;
+    const soldTeam = teams.find(t => t.id === currentBidTeam);
 
     try {
       await fetch('http://localhost:8282/api/players/auction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: player.id,
-          teamId: currentBidTeam,
-          soldPrice: soldAmount,
-          status: 'SOLD'
-        })
+        body: JSON.stringify({ playerId: player.id, teamId: currentBidTeam, soldPrice: soldAmount, status: 'SOLD' }),
       });
-    } catch (e) {
-      setError('Failed to update auction result.');
-      return;
-    }
+    } catch (e) { setError('Failed to update auction result.'); return; }
+
+    setSoldAnim({
+      playerName: player.name,
+      teamName: soldTeam?.name ?? '—',
+      teamLogo: soldTeam?.logo ?? '',
+      amount: soldAmount,
+    });
 
     const nextAuctionPlayers = auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx);
-
-    setPlayers(prevPlayers => prevPlayers.filter(p => p.id !== player.id));
-    setAuctionPlayers(nextAuctionPlayers);
-    setTeamPurse(prevPurse => ({
-      ...prevPurse,
-      [currentBidTeam]: nextRemainingPurse
-    }));
-    setCurrentPlayerIdx(idx => (idx >= nextAuctionPlayers.length - 1 ? 0 : idx));
-    setError('');
+    setTimeout(() => {
+      setSoldAnim(null);
+      setPlayers(prevPlayers => prevPlayers.filter(p => p.id !== player.id));
+      setAuctionPlayers(nextAuctionPlayers);
+      setTeamPurse(prevPurse => ({ ...prevPurse, [currentBidTeam]: nextRemainingPurse }));
+      setCurrentPlayerIdx(idx => (idx >= nextAuctionPlayers.length - 1 ? 0 : idx));
+      setError('');
+    }, 3200);
   };
 
   const handleUnsold = async () => {
-    // Call backend to update auction result as unsold
     try {
       await fetch('http://localhost:8282/api/players/auction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          playerId: player.id,
-          teamId: null,
-          soldPrice: 0,
-          status: 'UNSOLD'
-        })
+        body: JSON.stringify({ playerId: player.id, teamId: null, soldPrice: 0, status: 'UNSOLD' }),
       });
-    } catch (e) {
-      setError('Failed to update auction result.');
-      return;
-    }
-    // Mark player as unsold and move to next locally
-  setPlayers(players.filter(p => p.id !== player.id));
-  setAuctionPlayers(auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx));
-  setCurrentPlayerIdx(idx => idx >= auctionPlayers.length - 1 ? 0 : idx);
-  setError('');
+    } catch (e) { setError('Failed to update auction result.'); return; }
+    setPlayers(players.filter(p => p.id !== player.id));
+    setAuctionPlayers(auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx));
+    setCurrentPlayerIdx(idx => idx >= auctionPlayers.length - 1 ? 0 : idx);
+    setError('');
   };
 
+  /* ── Main auction screen ──────────────────────────────────────────── */
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #fff 0%, #e0e7ff 100%)', padding: '0.5rem', width: '100vw', boxSizing: 'border-box' }}>
-      <h1 className="auction-title">Live EPL 8 Auction</h1>
-  {/* ...existing code... */}
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 260px', gap: 32, width: '100%', maxWidth: '1600px', margin: '0 auto', alignItems: 'start' }}>
-        {/* Player Info */}
-        <div key={player.id} id="playerInfo" className="player-info-enter" style={{ background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px #0001', padding: 18, minWidth: 140, maxWidth: 220, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <img src={player.photo} alt={player.name} style={{ width: 220, height: 120, objectFit: 'cover', borderRadius: '50%', margin: '0 auto 10px' }} />
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1976d2', textAlign: 'center', margin: 0 }}>{player.name}</h2>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontSize: 13, color: player.isNewPlayer === 1 ? '#43a047' : '#888', fontWeight: 600, marginBottom: 6 }}>
-            <span>{player.isNewPlayer === 1 ? 'New Player' : 'Old Player'}</span>
-            <span style={{ color: '#1976d2' }}>Group: {player.groupCode || '-'}</span>
-          </div>
-          {/* Player stats instead of photo */}
-          <table style={{ width: '100%', fontSize: 13, margin: '10px 0' }}>
-            <tbody>
-              {Object.entries(player.stats || {}).map(([key, value]) => (
-                <tr key={key}>
-                  <td style={{ textTransform: 'capitalize', padding: '2px 6px', color: '#555' }}>{key}</td>
-                  <td style={{ fontWeight: 700, padding: '2px 6px', color: '#1976d2' }}>{value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14 }}>Base Price: <b>₹{player.basePrice.toLocaleString()}</b></div>
-          <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14 }}>Current Price: <b style={{ color: '#ff5722' }}>₹{currentBid?.toLocaleString()}</b></div>
-          <div style={{ textAlign: 'center', marginBottom: 6, fontSize: 14 }}>Highest Bidder: <b style={{ color: '#009688' }}>{currentBidTeam ? teams.find(t => t.id === currentBidTeam)?.name : '-'}</b></div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 12, justifyContent: 'center' }}>
-            <button onClick={handleSold} style={{ background: '#43a047', color: '#fff', fontWeight: 700, border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 15, cursor: 'pointer' }}>Sold</button>
-            <button onClick={handleUnsold} style={{ background: '#b71c1c', color: '#fff', fontWeight: 700, border: 'none', borderRadius: 8, padding: '8px 18px', fontSize: 15, cursor: 'pointer' }}>Unsold</button>
-          </div>
-          {error && <div style={{ color: 'red', marginTop: 8 }}>{error}</div>}
-        </div>
-        {/* Team Bid Grid */}
-        <div style={{
-          background: '#fff',
-          borderRadius: 16,
-          boxShadow: '0 4px 24px #0001',
-          padding: 24,
-          minWidth: 320,
-          width: '100%',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 18,
-          alignContent: 'start',
-        }}>
-          {teams.map(team => (
-            <div key={team.id} style={{
-              border: '2px solid #1976d2',
-              borderRadius: 10,
-              padding: 10,
-              minWidth: 110,
-              maxWidth: 140,
+    <div style={{ height: 'calc(100vh - 56px)', background: BG, padding: '0.6rem 0.8rem', width: '100vw', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <h1 className="auction-title">EPL 8 - The Grand Auction</h1>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '260px 1fr 256px',
+        gap: 14,
+        width: '100%',
+        flex: 1,
+        minHeight: 0,
+        alignItems: 'stretch',
+      }}>
+
+        {/* ── Player info card ── */}
+        <div
+          key={player.id}
+          id="playerInfo"
+          className="player-info-enter"
+          style={{
+            background: 'rgba(255,255,255,0.92)',
+            border: '1px solid rgba(0,0,0,0.09)',
+            borderRadius: 16,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.10)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+          }}
+        >
+          <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 10, flex: 1, justifyContent: 'center' }}>
+            {/* Auction Player label — bold, highlighted */}
+            <div style={{
               textAlign: 'center',
-              background: currentBidTeam === team.id ? '#e3f2fd' : '#fff',
-              boxShadow: '0 2px 8px #0001',
-              marginBottom: 6,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 , width: '100%', marginBottom: 6 }}>
-                <img src={team.logo} alt={team.name} style={{ width: 50, height: 44, objectFit: 'inherit', flexShrink: 0 }} />
-                <div style={{ minWidth: 0, textAlign: 'left' }}>
-                  <div style={{ fontWeight: 700, fontSize: 11, lineHeight: 1.15 }}>{team.name}</div>
-                  <div style={{ fontSize: 12, color: '#009688', marginTop: 4, fontWeight: 700 }}>₹{teamPurse[team.id]?.toLocaleString()}</div>
-                </div>
-              </div>
-              <div style={{ fontSize: 10, color: '#333', marginBottom: 1 }}>
-                <span style={{ fontWeight: 600 }}>POC1:</span> <b>{team.poc1 || '-'}</b>
-              </div>
-              <div style={{ fontSize: 10, color: '#333', marginBottom: 2 }}>
-                <span style={{ fontWeight: 600 }}>POC2:</span> <b>{team.poc2 || '-'}</b>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'center', marginTop: 4 }}>
-                <span style={{ fontWeight: 600, fontSize: 13, marginRight: 2 }}>Bid</span>
-                <button
-                  onClick={() => handleBid(team.id, true)}
-                  style={{ background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 6px', minWidth: 24, minHeight: 22, cursor: 'pointer', fontSize: 13, fontWeight: 700, marginRight: 2 }}
-                >↑</button>
-                <button
-                  onClick={() => handleBid(team.id, false)}
-                  disabled={currentBid === player.basePrice || currentBid === 0}
-                  style={{ background: '#ff5722', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 6px', minWidth: 24, minHeight: 22, cursor: (currentBid === player.basePrice || currentBid === 0) ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 700, opacity: (currentBid === player.basePrice || currentBid === 0) ? 0.5 : 1 }}
-                >↓</button>
+              background: 'linear-gradient(135deg, rgba(0,90,142,0.13) 0%, rgba(0,120,194,0.06) 100%)',
+              border: '1px solid rgba(0,90,142,0.28)',
+              borderRadius: 8,
+              padding: '7px 14px',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 13, fontWeight: 900, letterSpacing: 3.5,
+              textTransform: 'uppercase', color: '#005A8E',
+              flexShrink: 0,
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)',
+            }}>Auction Player</div>
+
+            {/* Player photo — below the label */}
+            <div style={{ position: 'relative', width: '100%', borderRadius: 10, overflow: 'hidden', flexShrink: 0 }}>
+              <img
+                src={player.photo}
+                alt={player.name}
+                style={{ width: '100%', height: 148, objectFit: 'cover', display: 'block' }}
+              />
+              <div style={{
+                position: 'absolute', inset: 0,
+                background: 'linear-gradient(to bottom, transparent 40%, rgba(255,255,255,0.97) 100%)',
+              }} />
+              <div style={{ position: 'absolute', bottom: 8, left: 10, right: 10, display: 'flex', gap: 6 }}>
+                <span className={`badge ${player.isNewPlayer === 1 ? 'badge-sold' : 'badge-pending'}`} style={{ fontSize: 9 }}>
+                  {player.isNewPlayer === 1 ? 'New' : 'Veteran'}
+                </span>
+                <span style={{ background: 'rgba(74,158,255,0.2)', color: '#4A9EFF', border: '1px solid rgba(74,158,255,0.4)', padding: '2px 8px', borderRadius: 999, fontSize: 9, fontWeight: 700, letterSpacing: 0.5 }}>
+                  GRP: {player.groupCode || '—'}
+                </span>
               </div>
             </div>
-          ))}
+
+            {/* Name */}
+            <div style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: '1.55rem',
+              fontWeight: 800,
+              color: '#0D1E3E',
+              textAlign: 'center',
+              letterSpacing: 1,
+              textTransform: 'uppercase',
+              lineHeight: 1,
+            }}>{player.name}</div>
+
+            {/* Stats */}
+            {Object.keys(player.stats || {}).length > 0 && (
+              <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+                <tbody>
+                  {Object.entries(player.stats || {}).map(([key, value]) => (
+                    <tr key={key} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                      <td style={{ textTransform: 'capitalize', padding: '3px 0', color: '#6B7FA0' }}>{key}</td>
+                      <td style={{ fontWeight: 700, padding: '3px 0', color: '#1A3362', textAlign: 'right', fontFamily: "'Space Mono', monospace", fontSize: 10 }}>{value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {/* Bid panel — current bid is the hero */}
+            <div style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: 12, padding: '12px 14px', textAlign: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                  background: 'linear-gradient(135deg, rgba(0,90,142,0.10) 0%, rgba(0,120,194,0.06) 100%)',
+                  border: '1px solid rgba(0,90,142,0.28)',
+                  borderRadius: 10, padding: '7px 18px',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)',
+                }}>
+                  <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 2.5, textTransform: 'uppercase', color: '#8A9AB8', marginBottom: 2 }}>Base Price</span>
+                  <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 14, fontWeight: 700, color: '#005A8E', letterSpacing: 0.5 }}>
+                    ₹{player.basePrice.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 10, letterSpacing: 2, color: '#6B7FA0', textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>Current Bid</div>
+              <div style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: '2.1rem',
+                fontWeight: 700,
+                color: '#005A8E',
+                lineHeight: 1,
+                marginBottom: 10,
+              }}>₹{currentBid.toLocaleString()}</div>
+
+              <div style={{ fontSize: 10, letterSpacing: 2, color: '#6B7FA0', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4 }}>Leader</div>
+              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '1rem', color: '#007A45', letterSpacing: 0.5 }}>
+                {currentBidTeam ? teams.find(t => t.id === currentBidTeam)?.name : '—'}
+              </div>
+            </div>
+
+            {/* SOLD / UNSOLD */}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={handleSold} style={{
+                flex: 1, background: '#00D97E', color: '#04080F', fontWeight: 900,
+                border: 'none', borderRadius: 8, padding: '12px 0', fontSize: 16, cursor: 'pointer',
+                fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 2, textTransform: 'uppercase',
+                boxShadow: '0 0 22px rgba(0,217,126,0.4)',
+              }}>Sold</button>
+              <button onClick={handleUnsold} style={{
+                flex: 1, background: '#FF3D5A', color: '#fff', fontWeight: 900,
+                border: 'none', borderRadius: 8, padding: '12px 0', fontSize: 16, cursor: 'pointer',
+                fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 2, textTransform: 'uppercase',
+                boxShadow: '0 0 22px rgba(255,61,90,0.4)',
+              }}>Unsold</button>
+            </div>
+
+            {error && <div style={{ color: '#E5283F', fontSize: 12, textAlign: 'center', fontWeight: 600 }}>{error}</div>}
+          </div>
         </div>
-        {/* Bid History */}
+
+        {/* ── Team bid grid ── */}
         <div style={{
-          background: '#fff',
+          background: 'radial-gradient(ellipse at 50% 20%, rgba(255,255,255,0.98) 0%, rgba(228,238,252,0.96) 100%)',
+          border: '1px solid rgba(43,114,212,0.10)',
           borderRadius: 16,
-          boxShadow: '0 4px 24px #0001',
-          padding: 24,
-          minWidth: 280,
-          maxWidth: 340,
-          width: '100%',
+          boxShadow: '0 4px 32px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.8)',
+          padding: 14,
           display: 'grid',
-          gridTemplateColumns: 'repeat(1, 1fr)',
-          gap: 18,
-          alignContent: 'start',
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gridAutoRows: '1fr',
+          gap: 10,
+          height: '100%',
+          backdropFilter: 'blur(12px)',
         }}>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f2027', marginBottom: 12, textAlign: 'center' }}>Bid History</h3>
-          <ul style={{ maxHeight: 160, overflowY: 'auto', padding: 0, listStyle: 'none', marginBottom: 18 }}>
-            {bids.filter(b => b.playerId === player.id).slice().reverse().map((bid, idx) => (
-              <li key={idx} style={{ marginBottom: 8, borderBottom: '1px solid #eee', paddingBottom: 8, fontSize: 13 }}>
-                <b>{teams.find(t => t.id === bid.teamId)?.name}</b> bid <b>₹{bid.amount.toLocaleString()}</b> <span style={{ color: '#888', fontSize: 11 }}>at {bid.time}</span>
+          {teams.map(team => {
+            const isLeader = currentBidTeam === team.id;
+            const canDecrement = !(currentBid === player.basePrice || currentBid === 0);
+            const remaining = teamPurse[team.id] ?? 0;
+            const pct = team.purse > 0 ? Math.round((remaining / team.purse) * 100) : 0;
+            const barColor = pct > 60 ? '#00A85A' : pct > 30 ? '#F5A623' : '#E5283F';
+            return (
+              <div key={team.id} style={{
+                border: isLeader ? '2px solid #0078C2' : '1px solid rgba(0,0,0,0.09)',
+                borderBottom: `3px solid ${barColor}`,
+                borderRadius: 12,
+                padding: '12px 12px 10px',
+                background: isLeader
+                  ? 'linear-gradient(150deg, rgba(0,120,194,0.11) 0%, rgba(0,120,194,0.03) 100%)'
+                  : 'linear-gradient(150deg, #FFFFFF 0%, rgba(238,245,255,0.97) 100%)',
+                boxShadow: isLeader
+                  ? '0 6px 24px rgba(0,90,142,0.22)'
+                  : '0 2px 10px rgba(0,0,0,0.06)',
+                transition: 'all 0.25s',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                position: 'relative',
+                overflow: 'hidden',
+              }}>
+                {/* Watermark purse % */}
+                <div style={{
+                  position: 'absolute',
+                  right: 4,
+                  bottom: 36,
+                  fontSize: '3.8rem',
+                  fontWeight: 900,
+                  fontFamily: "'Space Mono', monospace",
+                  color: `${barColor}1E`,
+                  lineHeight: 1,
+                  userSelect: 'none',
+                  pointerEvents: 'none',
+                  letterSpacing: -2,
+                }}>{pct}%</div>
+
+                {/* Logo - centered, larger */}
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                  <img src={team.logo} alt={team.name} style={{
+                    width: 96, height: 96,
+                    objectFit: 'contain',
+                    borderRadius: '50%',
+                    border: `2px solid ${barColor}55`,
+                    background: 'rgba(255,255,255,0.98)',
+                    padding: 4,
+                    boxShadow: `0 0 18px ${barColor}50, 0 2px 10px rgba(0,0,0,0.12)`,
+                  }} />
+                </div>
+
+                {/* Name - highlighted badge below logo */}
+                <div style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontWeight: 400,
+                  fontSize: '1.2rem',
+                  color: isLeader ? '#006BA0' : '#0D1E3E',
+                  textTransform: 'uppercase',
+                  letterSpacing: 2.5,
+                  textAlign: 'center',
+                  background: isLeader ? 'rgba(0,120,194,0.14)' : `${barColor}14`,
+                  border: `1px solid ${isLeader ? 'rgba(0,120,194,0.35)' : `${barColor}35`}`,
+                  borderRadius: 7,
+                  padding: '4px 8px',
+                  lineHeight: 1.2,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}>{team.name}</div>
+
+                {/* Purse + bar */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: '#6B7FA0', letterSpacing: 1, textTransform: 'uppercase' }}>Purse</span>
+                    <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '0.78rem', fontWeight: 700, color: barColor }}>
+                      ₹{remaining.toLocaleString()}
+                    </span>
+                  </div>
+                  <div style={{ width: '100%', height: 5, background: 'rgba(0,0,0,0.07)', borderRadius: 99 }}>
+                    <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 99, transition: 'width 0.6s ease', boxShadow: `0 0 6px ${barColor}66` }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
+                    <span style={{ fontSize: 9, color: '#8A9AB8' }}>
+                      Spent <span style={{ fontFamily: "'Space Mono', monospace", color: '#4A6080', fontWeight: 600 }}>₹{(team.purse - remaining).toLocaleString()}</span>
+                    </span>
+                    <span style={{ fontSize: 9, color: '#8A9AB8' }}>{100 - pct}% used</span>
+                  </div>
+                </div>
+
+                {/* POC chips */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {[
+                    { label: 'POC1', name: team.poc1, bg: 'rgba(43,114,212,0.08)', border: '1px solid rgba(43,114,212,0.22)', color: '#1A5BB5', grad: 'linear-gradient(135deg, #2B72D4, #1455A8)' },
+                    { label: 'POC2', name: team.poc2, bg: 'rgba(120,80,200,0.08)', border: '1px solid rgba(120,80,200,0.22)', color: '#5E38A8', grad: 'linear-gradient(135deg, #7850C8, #5032A0)' },
+                  ].filter(p => p.name).map(poc => {
+                    const nm = poc.name || '';
+                    const inits = nm.trim().split(/\s+/).map(w => w.charAt(0)).join('').toUpperCase().slice(0, 2);
+                    return (
+                      <div key={poc.label} style={{ display: 'flex', alignItems: 'center', gap: 8, background: poc.bg, border: poc.border, borderRadius: 8, padding: '6px 9px' }}>
+                        <div style={{
+                          width: 26, height: 26,
+                          borderRadius: '50%',
+                          background: poc.grad,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, fontWeight: 900, color: '#fff',
+                          flexShrink: 0,
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.20)',
+                        }}>{inits}</div>
+                        <span style={{ flex: 1, fontSize: 10.5, fontWeight: 600, color: poc.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {poc.name}
+                        </span>
+                        <span style={{ fontSize: 8, fontWeight: 900, color: poc.color, letterSpacing: 1, fontFamily: "'Barlow Condensed', sans-serif", opacity: 0.75 }}>
+                          {poc.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Bid buttons */}
+                <div style={{ display: 'flex', gap: 5, width: '100%' }}>
+                  <button
+                    onClick={() => handleBid(team.id, true)}
+                    style={{
+                      flex: 1,
+                      background: 'linear-gradient(135deg, #00D97E 0%, #00B868 100%)',
+                      color: '#04080F',
+                      border: 'none',
+                      borderRadius: 7,
+                      padding: '10px 0',
+                      cursor: 'pointer',
+                      fontSize: 16,
+                      fontWeight: 900,
+                      lineHeight: 1,
+                      boxShadow: '0 3px 12px rgba(0,217,126,0.45)',
+                      transition: 'transform 0.1s, box-shadow 0.1s',
+                    }}
+                  >↑</button>
+                  <button
+                    onClick={() => handleBid(team.id, false)}
+                    disabled={!canDecrement}
+                    style={{
+                      flex: 1,
+                      background: canDecrement
+                        ? 'linear-gradient(135deg, #FF3D5A 0%, #D42040 100%)'
+                        : 'rgba(255,61,90,0.15)',
+                      color: canDecrement ? '#fff' : 'rgba(255,61,90,0.5)',
+                      border: 'none',
+                      borderRadius: 7,
+                      padding: '10px 0',
+                      cursor: canDecrement ? 'pointer' : 'not-allowed',
+                      fontSize: 16,
+                      fontWeight: 900,
+                      lineHeight: 1,
+                      boxShadow: canDecrement ? '0 3px 12px rgba(255,61,90,0.45)' : 'none',
+                      transition: 'transform 0.1s, box-shadow 0.1s',
+                    }}
+                  >↓</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Bid history ── */}
+        <div style={{
+          background: 'rgba(255,255,255,0.92)',
+          border: '1px solid rgba(0,0,0,0.08)',
+          borderRadius: 16,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+          padding: '14px 14px 14px',
+          backdropFilter: 'blur(12px)',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 14,
+            paddingBottom: 10,
+            borderBottom: '1px solid rgba(0,0,0,0.07)',
+          }}>
+            <div style={{ width: 3, height: 18, background: '#0078C2', borderRadius: 99, flexShrink: 0 }} />
+            <span style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: '1rem',
+              fontWeight: 700,
+              color: '#1A3362',
+              letterSpacing: 3,
+              textTransform: 'uppercase',
+            }}>Bid History</span>
+          </div>
+
+          <ul style={{ overflowY: 'auto', padding: 0, listStyle: 'none', margin: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {bids.filter(b => b.playerId === player.id).slice().reverse().map((bid, idx) => {
+              const bidTeam = teams.find(t => t.id === bid.teamId);
+              const isLatest = idx === 0;
+              return (
+                <li key={idx} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: isLatest ? 'rgba(0,120,194,0.07)' : 'rgba(0,0,0,0.02)',
+                  border: isLatest ? '1px solid rgba(0,120,194,0.25)' : '1px solid transparent',
+                  borderRadius: 8,
+                  padding: '7px 8px',
+                }}>
+                  {/* Timeline dot */}
+                  <div style={{
+                    width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+                    background: isLatest ? '#0078C2' : '#C8D4E4',
+                    boxShadow: isLatest ? '0 0 6px rgba(0,120,194,0.60)' : 'none',
+                  }} />
+                  {/* Team logo */}
+                  {bidTeam?.logo && (
+                    <img src={bidTeam.logo} alt={bidTeam.name} style={{ width: 20, height: 20, objectFit: 'contain', flexShrink: 0, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.08)' }} />
+                  )}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: isLatest ? '#0D1E3E' : '#4A6080', fontSize: 11, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {bidTeam?.name ?? '—'}
+                    </div>
+                    <div style={{ color: '#8A9AB8', fontSize: 9 }}>{bid.time}</div>
+                  </div>
+                  <span style={{
+                    fontFamily: "'Space Mono', monospace",
+                    color: isLatest ? '#005A8E' : '#8A9AB8',
+                    fontWeight: 700,
+                    fontSize: isLatest ? 12 : 11,
+                    flexShrink: 0,
+                  }}>₹{bid.amount.toLocaleString()}</span>
+                </li>
+              );
+            })}
+            {bids.filter(b => b.playerId === player.id).length === 0 && (
+              <li style={{ color: '#8A9AB8', fontSize: 12, textAlign: 'center', padding: '40px 0', fontStyle: 'italic' }}>
+                No bids yet.
               </li>
-            ))}
-            {bids.filter(b => b.playerId === player.id).length === 0 && <li>No bids yet.</li>}
+            )}
           </ul>
         </div>
+
       </div>
+
+      {/* ── SOLD animation overlay ── */}
+      {soldAnim && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(4,8,15,0.82)',
+          animation: 'sold-backdrop 3.2s ease-in-out forwards',
+          backdropFilter: 'blur(6px)',
+        }}>
+          <FireworksCanvas />
+          <div style={{
+            textAlign: 'center',
+            animation: 'sold-card 3.2s ease-in-out forwards',
+          }}>
+            {/* SOLD! badge */}
+            <div style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 'clamp(5rem, 12vw, 9rem)',
+              letterSpacing: 12,
+              lineHeight: 1,
+              color: '#00D97E',
+              textShadow: '0 0 40px rgba(0,217,126,0.8), 0 0 80px rgba(0,217,126,0.4)',
+              animation: 'sold-badge 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both',
+            }}>SOLD!</div>
+
+            {/* Divider */}
+            <div style={{ width: 80, height: 2, background: 'rgba(0,217,126,0.4)', borderRadius: 99, margin: '10px auto 18px' }} />
+
+            {/* Player name */}
+            <div style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 'clamp(1.4rem, 3vw, 2rem)',
+              fontWeight: 900, letterSpacing: 4,
+              textTransform: 'uppercase', color: '#FFFFFF',
+              marginBottom: 6,
+              animation: 'sold-fade-up 0.5s ease-out 0.4s both',
+            }}>
+              {soldAnim.playerName}
+            </div>
+
+            {/* "sold to" label */}
+            <div style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: 3,
+              textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)',
+              marginBottom: 14,
+              animation: 'sold-fade-up 0.5s ease-out 0.55s both',
+            }}>sold to</div>
+
+            {/* Team logo + name */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
+              animation: 'sold-fade-up 0.5s ease-out 0.65s both',
+            }}>
+              {soldAnim.teamLogo && (
+                <img src={soldAnim.teamLogo} alt={soldAnim.teamName} style={{
+                  width: 64, height: 64, objectFit: 'contain', borderRadius: '50%',
+                  border: '2px solid rgba(0,120,194,0.6)',
+                  boxShadow: '0 0 24px rgba(0,120,194,0.5)',
+                  background: 'rgba(255,255,255,0.08)',
+                  padding: 4,
+                }} />
+              )}
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+                letterSpacing: 5, color: '#FFD700',
+                textShadow: '0 0 28px rgba(255,215,0,0.85), 0 0 60px rgba(255,215,0,0.4)',
+                textTransform: 'uppercase',
+              }}>{soldAnim.teamName}</div>
+            </div>
+
+            {/* Price */}
+            <div style={{
+              fontFamily: "'Space Mono', monospace",
+              fontSize: 'clamp(1.2rem, 2.5vw, 1.8rem)',
+              fontWeight: 700, color: '#00D97E',
+              marginTop: 18,
+              animation: 'sold-fade-up 0.5s ease-out 0.8s both',
+            }}>₹{soldAnim.amount.toLocaleString()}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

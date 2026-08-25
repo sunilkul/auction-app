@@ -4,23 +4,26 @@ import AuctionPage from './pages/AuctionPage';
 import PlayerManagementPage from './pages/PlayerManagementPage';
 import TeamPage from './pages/TeamPage';
 import WheelPickerPage from './pages/WheelPickerPage';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, NavLink } from 'react-router-dom';
 
 const App: React.FC = () => {
   return (
     <BrowserRouter>
-      <nav style={{ background: '#0f2027', padding: 16 }}>
-        <Link to="/" style={{ color: '#fff', marginRight: 16 }}>Dashboard</Link>
-        <Link to="/auction" style={{ color: '#fff', marginRight: 16 }}>Auction</Link>
-        <Link to="/players" style={{ color: '#fff', marginRight: 16 }}>Players</Link>
-        <Link to="/teams/1" style={{ color: '#fff', marginRight: 16 }}>Team</Link>
-        <Link to="/wheel-picker" style={{ color: '#fff' }}>Wheel Picker</Link>
+      <nav className="app-nav">
+        <Link to="/" className="nav-brand">
+          EPL<span>Cricket Auction</span>
+        </Link>
+        <NavLink to="/"             end  className={({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`}>Dashboard</NavLink>
+        <NavLink to="/auction"           className={({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`}>Auction</NavLink>
+        <NavLink to="/players"           className={({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`}>Players</NavLink>
+        <NavLink to="/teams/1"           className={({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`}>Teams</NavLink>
+        <NavLink to="/wheel-picker"      className={({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`}>Generator</NavLink>
       </nav>
       <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/auction" element={<AuctionPage />} />
-        <Route path="/players" element={<PlayerManagementPage />} />
-        <Route path="/teams/:id" element={<TeamPage />} />
+        <Route path="/"            element={<DashboardPage />} />
+        <Route path="/auction"     element={<AuctionPage />} />
+        <Route path="/players"     element={<PlayerManagementPage />} />
+        <Route path="/teams/:id"   element={<TeamPage />} />
         <Route path="/wheel-picker" element={<WheelPickerPage />} />
       </Routes>
     </BrowserRouter>
