@@ -139,6 +139,11 @@ const AuctionPage: React.FC = () => {
   const [auctionStarted, setAuctionStarted] = useState(false);
   const [soldAnim, setSoldAnim] = useState<{ playerName: string; teamName: string; teamLogo: string; amount: number } | null>(null);
 
+  const [showPlayerIntro, setShowPlayerIntro] = useState(false);
+  const [introExiting, setIntroExiting] = useState(false);
+  const [introPlayer, setIntroPlayer] = useState<Player | null>(null);
+  const introShownForRef = useRef<number | null>(null);
+
   function shuffle<T>(array: T[]): T[] {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
@@ -207,6 +212,54 @@ const AuctionPage: React.FC = () => {
       setError('');
     }
   }, [currentPlayerIdx, auctionPlayers]);
+
+  // Inject player-intro keyframes once
+  useEffect(() => {
+    if (document.getElementById('pi-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'pi-styles';
+    s.textContent = `
+      @keyframes pi-photo{0%{opacity:0;transform:scale(0.35) translateY(80px);filter:blur(22px)}65%{opacity:1;transform:scale(1.05) translateY(-4px);filter:blur(0)}100%{opacity:1;transform:scale(1) translateY(0)}}
+      @keyframes pi-name{0%{opacity:0;transform:translateY(50px) scaleX(0.82)}100%{opacity:1;transform:translateY(0) scaleX(1)}}
+      @keyframes pi-slide-up{0%{opacity:0;transform:translateY(26px)}100%{opacity:1;transform:translateY(0)}}
+      @keyframes pi-scale-in{0%{opacity:0;transform:scale(0.5)}80%{transform:scale(1.07)}100%{opacity:1;transform:scale(1)}}
+      @keyframes pi-label{0%{opacity:0;letter-spacing:18px}100%{opacity:1;letter-spacing:6px}}
+      @keyframes pi-stat{0%{opacity:0;transform:translateY(16px) scale(0.88)}100%{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes pi-glow-pulse{0%,100%{box-shadow:0 0 28px #00C8FF80,0 0 60px #00C8FF20}50%{box-shadow:0 0 65px #00C8FFcc,0 0 130px #00C8FF55}}
+      @keyframes pi-countdown{from{width:100%}to{width:0%}}
+      @keyframes pi-shimmer{0%{transform:translateX(-220%) skewX(-20deg);opacity:0}15%{opacity:0.9}100%{transform:translateX(380%) skewX(-20deg);opacity:0}}
+      @keyframes pi-beam{from{opacity:0;transform:scaleY(0)}to{opacity:1;transform:scaleY(1)}}
+    `;
+    document.head.appendChild(s);
+  }, []);
+
+  // Trigger intro when active player changes
+  const currentPlayerForIntro = auctionPlayers[currentPlayerIdx] ?? null;
+  useEffect(() => {
+    if (!auctionStarted || !currentPlayerForIntro) return;
+    if (currentPlayerForIntro.id === introShownForRef.current) return;
+    introShownForRef.current = currentPlayerForIntro.id;
+    setIntroPlayer({ ...currentPlayerForIntro });
+    setIntroExiting(false);
+    setShowPlayerIntro(true);
+  }, [currentPlayerForIntro?.id, auctionStarted]);
+
+  // Auto-dismiss intro after 5s
+  useEffect(() => {
+    if (!showPlayerIntro) return;
+    const exitT = setTimeout(() => setIntroExiting(true), 4500);
+    const hideT = setTimeout(() => setShowPlayerIntro(false), 5000);
+    return () => { clearTimeout(exitT); clearTimeout(hideT); };
+  }, [showPlayerIntro]);
+
+  const dismissIntro = () => {
+    setIntroExiting(true);
+    setTimeout(() => setShowPlayerIntro(false), 380);
+  };
+
+  const introSkillName = introPlayer
+    ? (skills.find(s => s.id === Number(introPlayer.skillId))?.skillName ?? introPlayer.skillName ?? '')
+    : '';
 
   /* ── Setup screen ─────────────────────────────────────────────────── */
   if (!auctionStarted) {
@@ -813,6 +866,230 @@ const AuctionPage: React.FC = () => {
         </div>
 
       </div>
+
+      {/* ── Player intro overlay ── */}
+      {showPlayerIntro && introPlayer && (
+        <div
+          onClick={dismissIntro}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1500,
+            background: 'rgba(2,8,20,0.97)',
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            overflow: 'hidden',
+            opacity: introExiting ? 0 : 1,
+            transition: introExiting ? 'opacity 0.38s ease-out' : 'opacity 0.2s ease-in',
+          }}
+        >
+          {/* Grid background */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            backgroundImage: 'linear-gradient(rgba(0,200,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,200,255,0.04) 1px,transparent 1px)',
+            backgroundSize: '56px 56px',
+          }} />
+
+          {/* Radial spotlight */}
+          <div style={{
+            position: 'absolute', width: 720, height: 720, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(0,140,255,0.13) 0%, rgba(0,80,180,0.07) 45%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
+
+          {/* Diagonal light beams */}
+          {[-35, -15, 15, 35].map((deg, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              width: 2, height: '160%',
+              background: `linear-gradient(to bottom, transparent 0%, rgba(0,200,255,${0.04 + i * 0.012}) 50%, transparent 100%)`,
+              transform: `rotate(${deg}deg)`,
+              transformOrigin: 'center center',
+              pointerEvents: 'none',
+              animation: `pi-beam 0.8s cubic-bezier(0.22,1,0.36,1) ${0.1 + i * 0.08}s both`,
+            }} />
+          ))}
+
+          {/* Letterbox bars */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 46, background: '#000', zIndex: 4 }} />
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 46, background: '#000', zIndex: 4 }} />
+
+          {/* Main content */}
+          <div style={{
+            position: 'relative', zIndex: 2,
+            textAlign: 'center', padding: '0 40px',
+            maxWidth: 580, width: '100%',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+          }}>
+
+            {/* "PLAYER UP FOR AUCTION" label */}
+            <div style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 11, fontWeight: 800, color: '#00C8FF',
+              textTransform: 'uppercase', letterSpacing: 6,
+              marginBottom: 22,
+              animation: 'pi-label 0.7s cubic-bezier(0.22,1,0.36,1) 0.05s both',
+            }}>
+              Player Up For Auction
+            </div>
+
+            {/* Photo */}
+            <div style={{
+              position: 'relative', marginBottom: 20,
+              animation: 'pi-photo 0.75s cubic-bezier(0.22,1,0.36,1) 0.15s both',
+            }}>
+              {/* Outer glow ring */}
+              <div style={{
+                position: 'absolute', inset: -10, borderRadius: '50%',
+                animation: 'pi-glow-pulse 2.2s ease-in-out infinite',
+                pointerEvents: 'none',
+              }} />
+              {/* Border ring */}
+              <div style={{
+                position: 'absolute', inset: -5, borderRadius: '50%',
+                border: '2px solid rgba(0,200,255,0.55)',
+                pointerEvents: 'none',
+              }} />
+              <img
+                src={introPlayer.photo}
+                alt={introPlayer.name}
+                style={{
+                  width: 172, height: 172, borderRadius: '50%',
+                  objectFit: 'cover',
+                  border: '3px solid rgba(0,200,255,0.35)',
+                  display: 'block', position: 'relative', zIndex: 1,
+                }}
+              />
+              {introPlayer.isNewPlayer === 1 && (
+                <div style={{
+                  position: 'absolute', bottom: 6, right: -2, zIndex: 2,
+                  background: '#FFB800', color: '#000',
+                  fontSize: 9, fontWeight: 900, borderRadius: 999,
+                  padding: '2px 8px', letterSpacing: 1, textTransform: 'uppercase',
+                  border: '2px solid #000',
+                }}>NEW</div>
+              )}
+            </div>
+
+            {/* Shimmer rule */}
+            <div style={{
+              width: '55%', height: 1, marginBottom: 18, position: 'relative', overflow: 'hidden',
+              background: 'linear-gradient(90deg, transparent, rgba(0,200,255,0.45), transparent)',
+            }}>
+              <div style={{
+                position: 'absolute', top: 0, width: '38%', height: '100%',
+                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent)',
+                animation: 'pi-shimmer 2.4s ease-in-out 0.6s infinite',
+              }} />
+            </div>
+
+            {/* Name */}
+            <div style={{
+              fontFamily: "'Bebas Neue', 'Barlow Condensed', sans-serif",
+              fontSize: 'clamp(2.6rem, 6vw, 4.4rem)',
+              color: '#FFFFFF', letterSpacing: 4, lineHeight: 1,
+              textTransform: 'uppercase', marginBottom: 16,
+              textShadow: '0 0 40px rgba(255,255,255,0.22)',
+              animation: 'pi-name 0.6s cubic-bezier(0.22,1,0.36,1) 0.38s both',
+            }}>
+              {introPlayer.name}
+            </div>
+
+            {/* Badges */}
+            <div style={{
+              display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap',
+              marginBottom: 22,
+              animation: 'pi-slide-up 0.5s cubic-bezier(0.22,1,0.36,1) 0.58s both',
+            }}>
+              {introSkillName && (
+                <span style={{
+                  padding: '4px 14px', borderRadius: 999,
+                  background: 'rgba(0,217,126,0.13)', border: '1px solid rgba(0,217,126,0.45)',
+                  color: '#00D97E', fontSize: 11, fontWeight: 800, letterSpacing: 1.5,
+                  textTransform: 'uppercase',
+                }}>{introSkillName}</span>
+              )}
+              {introPlayer.groupCode && (
+                <span style={{
+                  padding: '4px 14px', borderRadius: 999,
+                  background: 'rgba(0,200,255,0.10)', border: '1px solid rgba(0,200,255,0.38)',
+                  color: '#00C8FF', fontSize: 11, fontWeight: 800, letterSpacing: 1.5,
+                  textTransform: 'uppercase',
+                }}>GRP: {introPlayer.groupCode}</span>
+              )}
+            </div>
+
+            {/* Stats grid */}
+            {Object.keys(introPlayer.stats || {}).length > 0 && (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: `repeat(${Math.min(Object.keys(introPlayer.stats || {}).length, 4)}, 1fr)`,
+                gap: 10, width: '100%', marginBottom: 22,
+              }}>
+                {Object.entries(introPlayer.stats || {}).map(([k, v], i) => (
+                  <div key={k} style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.09)',
+                    borderTop: '1px solid rgba(0,200,255,0.2)',
+                    borderRadius: 10, padding: '10px 8px',
+                    animation: `pi-stat 0.45s cubic-bezier(0.22,1,0.36,1) ${0.68 + i * 0.07}s both`,
+                  }}>
+                    <div style={{
+                      fontSize: 8, color: 'rgba(255,255,255,0.38)',
+                      letterSpacing: 1.5, textTransform: 'uppercase',
+                      marginBottom: 5, fontWeight: 700,
+                    }}>{k}</div>
+                    <div style={{
+                      fontSize: 20, fontWeight: 700, color: '#FFFFFF',
+                      fontFamily: "'Space Mono', monospace", lineHeight: 1,
+                    }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Divider */}
+            <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.07)', marginBottom: 18 }} />
+
+            {/* Base price */}
+            <div style={{ animation: 'pi-scale-in 0.6s cubic-bezier(0.22,1,0.36,1) 0.95s both' }}>
+              <div style={{
+                fontSize: 9, fontWeight: 800, letterSpacing: 3.5,
+                color: 'rgba(255,255,255,0.32)', textTransform: 'uppercase', marginBottom: 6,
+              }}>Base Price</div>
+              <div style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: 'clamp(2rem, 4.5vw, 3.2rem)',
+                fontWeight: 700, color: '#FFD700',
+                textShadow: '0 0 40px rgba(255,215,0,0.75), 0 0 80px rgba(255,215,0,0.35)',
+                letterSpacing: 2, lineHeight: 1,
+              }}>₹{introPlayer.basePrice.toLocaleString()}</div>
+            </div>
+          </div>
+
+          {/* Countdown bar */}
+          <div style={{
+            position: 'absolute', bottom: 46, left: 0, right: 0, height: 2,
+            background: 'rgba(255,255,255,0.07)', zIndex: 5,
+          }}>
+            <div style={{
+              height: '100%',
+              background: 'linear-gradient(90deg, #00C8FF, #0057A8)',
+              boxShadow: '0 0 7px rgba(0,200,255,0.8)',
+              animation: `pi-countdown 5s linear forwards`,
+              animationPlayState: introExiting ? 'paused' : 'running',
+            }} />
+          </div>
+
+          {/* Skip hint */}
+          <div style={{
+            position: 'absolute', bottom: 15, left: 0, right: 0, zIndex: 5,
+            textAlign: 'center',
+            fontSize: 10, color: 'rgba(255,255,255,0.18)',
+            letterSpacing: 2.5, fontWeight: 700, textTransform: 'uppercase',
+            fontFamily: "'Barlow Condensed', sans-serif",
+          }}>Click anywhere to skip</div>
+        </div>
+      )}
 
       {/* ── SOLD animation overlay ── */}
       {soldAnim && (
