@@ -32,10 +32,11 @@ const TeamPage: React.FC = () => {
           fontFamily: "'Barlow Condensed', sans-serif",
           fontSize: 'clamp(2.2rem, 4vw, 3.5rem)',
           fontWeight: 900,
-          color: '#C47B0A',
+          color: '#005A8E',
           letterSpacing: 4,
           textTransform: 'uppercase',
           lineHeight: 1,
+          textShadow: '0 0 20px rgba(0,90,142,0.15), 0 2px 4px rgba(0,0,0,0.10)',
         }}>All Teams</div>
         <div style={{ fontSize: 11, color: '#6B7FA0', letterSpacing: 5, textTransform: 'uppercase', marginTop: 8 }}>
           Click a team to view players
@@ -45,10 +46,8 @@ const TeamPage: React.FC = () => {
       {/* Team grid */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 24,
-        maxWidth: 1100,
-        margin: '0 auto',
+        gridTemplateColumns: 'repeat(5, 1fr)',
+        gap: 20,
       }}>
         {teams.map(team => (
           <div
@@ -56,11 +55,11 @@ const TeamPage: React.FC = () => {
             className="team-card-hover"
             onClick={() => handleTeamClick(team)}
             style={{
-              background: 'rgba(255,255,255,0.90)',
-              border: '1px solid rgba(0,0,0,0.08)',
-              borderTop: '2px solid #F5A623',
+              background: 'linear-gradient(150deg, rgba(255,255,255,0.97) 0%, rgba(236,244,255,0.95) 100%)',
+              border: '1px solid rgba(43,114,212,0.10)',
+              borderBottom: '3px solid #0078C2',
               borderRadius: 16,
-              boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+              boxShadow: '0 4px 18px rgba(0,0,0,0.08)',
               padding: '1.75rem 1.5rem',
               textAlign: 'center',
               cursor: 'pointer',
@@ -86,21 +85,31 @@ const TeamPage: React.FC = () => {
               textTransform: 'uppercase',
               marginBottom: 10,
             }}>{team.name}</div>
-            <div style={{
-              background: 'rgba(0,0,0,0.04)',
-              border: '1px solid rgba(0,0,0,0.07)',
-              borderRadius: 8,
-              padding: '6px 14px',
-              width: '100%',
-            }}>
-              <div style={{ fontSize: 11, color: '#6B7FA0', marginBottom: 2 }}>
-                <span style={{ fontWeight: 700 }}>POC 1: </span>
-                <span style={{ color: '#1A3362' }}>{team.poc1}</span>
-              </div>
-              <div style={{ fontSize: 11, color: '#6B7FA0' }}>
-                <span style={{ fontWeight: 700 }}>POC 2: </span>
-                <span style={{ color: '#1A3362' }}>{team.poc2}</span>
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5, width: '100%' }}>
+              {[
+                { label: 'POC1', name: team.poc1, bg: 'rgba(43,114,212,0.08)',   border: '1px solid rgba(43,114,212,0.22)',  color: '#1A5BB5', grad: 'linear-gradient(135deg, #2B72D4, #1455A8)' },
+                { label: 'POC2', name: team.poc2, bg: 'rgba(120,80,200,0.08)',   border: '1px solid rgba(120,80,200,0.22)',  color: '#5E38A8', grad: 'linear-gradient(135deg, #7850C8, #5032A0)' },
+              ].filter(p => p.name).map(poc => {
+                const inits = (poc.name || '').trim().split(/\s+/).map((w: string) => w.charAt(0)).join('').toUpperCase().slice(0, 2);
+                return (
+                  <div key={poc.label} style={{ display: 'flex', alignItems: 'center', gap: 8, background: poc.bg, border: poc.border, borderRadius: 8, padding: '6px 9px' }}>
+                    <div style={{
+                      width: 26, height: 26, borderRadius: '50%',
+                      background: poc.grad,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 9, fontWeight: 900, color: '#fff', flexShrink: 0,
+                      fontFamily: "'Barlow Condensed', sans-serif",
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.20)',
+                    }}>{inits}</div>
+                    <span style={{ flex: 1, fontSize: 10.5, fontWeight: 600, color: poc.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {poc.name}
+                    </span>
+                    <span style={{ fontSize: 8, fontWeight: 900, color: poc.color, letterSpacing: 1, fontFamily: "'Barlow Condensed', sans-serif", opacity: 0.75 }}>
+                      {poc.label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -108,7 +117,7 @@ const TeamPage: React.FC = () => {
 
       {/* Modal */}
       {showModal && selectedTeam && (() => {
-        const teamPlayers = players.filter(p => p.teamId === selectedTeam.id);
+        const teamPlayers = players.filter(p => Number(p.teamId) === Number(selectedTeam.id));
         const showScroll = teamPlayers.length > 10;
         return (
           <div
@@ -128,8 +137,8 @@ const TeamPage: React.FC = () => {
             <div
               style={{
                 background: 'rgba(255,255,255,0.99)',
-                border: '1px solid rgba(0,0,0,0.10)',
-                borderTop: '2px solid #F5A623',
+                border: '1px solid rgba(43,114,212,0.12)',
+                borderTop: '3px solid #0078C2',
                 borderRadius: 18,
                 boxShadow: '0 20px 60px rgba(0,0,0,0.20)',
                 padding: '2rem',
@@ -180,7 +189,7 @@ const TeamPage: React.FC = () => {
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid rgba(196,123,10,0.20)', background: 'rgba(245,166,35,0.06)' }}>
+                      <tr style={{ borderBottom: '1px solid rgba(0,120,194,0.15)', background: 'rgba(0,120,194,0.05)' }}>
                         {['Photo', 'Name', 'Status', 'Base Price', 'Sold Price'].map(h => (
                           <th key={h} style={{
                             padding: '10px 12px',
@@ -212,7 +221,7 @@ const TeamPage: React.FC = () => {
                           <td style={{ padding: '10px 12px', fontFamily: "'Space Mono', monospace", fontSize: 12, color: '#4A6080' }}>
                             ₹{player.basePrice.toLocaleString()}
                           </td>
-                          <td style={{ padding: '10px 12px', fontFamily: "'Space Mono', monospace", fontSize: 12, color: player.soldPrice ? '#B87B10' : '#8A9AB8' }}>
+                          <td style={{ padding: '10px 12px', fontFamily: "'Space Mono', monospace", fontSize: 12, color: player.soldPrice ? '#005A8E' : '#8A9AB8' }}>
                             {player.soldPrice ? `₹${player.soldPrice.toLocaleString()}` : '—'}
                           </td>
                         </tr>

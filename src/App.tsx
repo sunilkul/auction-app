@@ -17,7 +17,6 @@ const App: React.FC = () => {
         <NavLink to="/auction"           className={({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`}>Auction</NavLink>
         <NavLink to="/players"           className={({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`}>Players</NavLink>
         <NavLink to="/teams/1"           className={({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`}>Teams</NavLink>
-        <NavLink to="/wheel-picker"      className={({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`}>Generator</NavLink>
       </nav>
       <Routes>
         <Route path="/"            element={<DashboardPage />} />
