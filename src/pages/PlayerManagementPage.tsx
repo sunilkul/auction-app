@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Player } from '../types';
+import { Player, Team } from '../types';
+import FireworksCanvas from '../components/FireworksCanvas';
 
 const BG = 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(235,242,252,0.92) 100%), url(/iStock-2163573192_web.jpg) center/cover no-repeat fixed';
 
@@ -21,22 +22,72 @@ const STATUS_CONFIG: Record<string, { accent: string; bg: string; border: string
 
 interface Skill { id: number; skillName: string; }
 
+interface SellModalState {
+  player: Player;
+  teamId: number | null;
+  price: string;
+  submitting: boolean;
+  error: string;
+}
+
 const PlayerManagementPage: React.FC = () => {
   const [players, setPlayers]           = useState<Player[]>([]);
   const [skills, setSkills]             = useState<Skill[]>([]);
+  const [teams, setTeams]               = useState<Team[]>([]);
   const [skillFilter, setSkillFilter]   = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<'All' | 'SOLD' | 'UNSOLD' | 'NOT_ASSIGNED' | 'ASSIGNED'>('All');
   const [nameSearch, setNameSearch]     = useState('');
+  const [sellModal, setSellModal]       = useState<SellModalState | null>(null);
+  const [soldAnim, setSoldAnim]         = useState<{ playerName: string; teamName: string; teamLogo: string; amount: number } | null>(null);
 
   useEffect(() => {
     fetch('http://localhost:8282/api/players/all-players').then(r => r.json()).then(setPlayers);
     fetch('http://localhost:8282/api/skills').then(r => r.json()).then(setSkills);
+    fetch('http://localhost:8282/api/teams').then(r => r.json()).then(setTeams);
   }, []);
 
-  const handleStatusToggle = (id: number) => {
-    setPlayers(prev =>
-      prev.map(p => p.id === id ? { ...p, status: p.status === 'SOLD' ? 'UNSOLD' : 'SOLD' } : p)
-    );
+  const handleOpenSellModal = (player: Player) => {
+    setSellModal({ player, teamId: null, price: String(player.basePrice), submitting: false, error: '' });
+  };
+
+  const handleMarkUnsold = async (id: number) => {
+    try {
+      await fetch(`http://localhost:8282/api/players/reset-auction?playerId=${id}`, {
+        method: 'POST',
+      });
+      setPlayers(prev => prev.map(p =>
+        p.id === id ? { ...p, status: 'NOT_ASSIGNED', soldPrice: null, teamId: null, teamName: undefined } : p
+      ));
+    } catch {
+      // silently ignore
+    }
+  };
+
+  const handleConfirmSold = async () => {
+    if (!sellModal) return;
+    const { player, teamId, price } = sellModal;
+    if (!teamId) { setSellModal(m => m ? { ...m, error: 'Please select a team.' } : m); return; }
+    const soldPrice = parseInt(price, 10);
+    if (isNaN(soldPrice) || soldPrice <= 0) { setSellModal(m => m ? { ...m, error: 'Enter a valid price.' } : m); return; }
+    setSellModal(m => m ? { ...m, submitting: true, error: '' } : m);
+    try {
+      await fetch('http://localhost:8282/api/players/auction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: player.id, teamId, soldPrice, status: 'SOLD' }),
+      });
+      const soldTeam = teams.find(t => t.id === teamId);
+      setPlayers(prev => prev.map(p =>
+        p.id === player.id
+          ? { ...p, status: 'SOLD', soldPrice, teamId, teamName: soldTeam?.name }
+          : p
+      ));
+      setSellModal(null);
+      setSoldAnim({ playerName: player.name, teamName: soldTeam?.name ?? '—', teamLogo: soldTeam?.logo ?? '', amount: soldPrice });
+      setTimeout(() => setSoldAnim(null), 3200);
+    } catch {
+      setSellModal(m => m ? { ...m, submitting: false, error: 'Failed to save. Please try again.' } : m);
+    }
   };
 
   const filteredPlayers = players.filter(p => {
@@ -192,6 +243,155 @@ const PlayerManagementPage: React.FC = () => {
         </div>
       </div>
 
+      {/* ── Sell Modal ───────────────────────────────── */}
+      {sellModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(4,8,20,0.60)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setSellModal(null); }}
+        >
+          <div style={{
+            background: 'rgba(255,255,255,0.97)',
+            borderRadius: 18,
+            padding: '28px 28px 24px',
+            width: '100%', maxWidth: 420,
+            boxShadow: '0 20px 60px rgba(0,0,0,0.25), 0 4px 20px rgba(0,0,0,0.12)',
+            border: '1px solid rgba(43,114,212,0.14)',
+          }}>
+            {/* Header */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{
+                fontSize: 9, fontWeight: 800, letterSpacing: 3,
+                color: '#8A9AB8', textTransform: 'uppercase', marginBottom: 6,
+              }}>Mark as Sold</div>
+              <div style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: '1.6rem', fontWeight: 900, color: '#0D1E3E',
+                letterSpacing: 1, textTransform: 'uppercase', lineHeight: 1,
+              }}>{sellModal.player.name}</div>
+              <div style={{ fontSize: 11, color: '#6B7FA0', marginTop: 4 }}>
+                Base price: <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, color: '#005A8E' }}>₹{sellModal.player.basePrice.toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: 'rgba(0,0,0,0.07)', marginBottom: 20 }} />
+
+            {/* Team select */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{
+                display: 'block', fontSize: 9, fontWeight: 800,
+                letterSpacing: 2.5, textTransform: 'uppercase',
+                color: '#8A9AB8', marginBottom: 8,
+              }}>Select Team</label>
+              <select
+                value={sellModal.teamId ?? ''}
+                onChange={e => setSellModal(m => m ? { ...m, teamId: Number(e.target.value) || null, error: '' } : m)}
+                style={{
+                  width: '100%', padding: '10px 14px',
+                  borderRadius: 10,
+                  border: sellModal.teamId
+                    ? '1.5px solid rgba(0,120,194,0.45)'
+                    : '1.5px solid rgba(43,114,212,0.20)',
+                  background: sellModal.teamId ? 'rgba(0,120,194,0.06)' : 'rgba(255,255,255,0.9)',
+                  color: sellModal.teamId ? '#005A8E' : '#8A9AB8',
+                  fontSize: 13, fontWeight: 700,
+                  fontFamily: "'Inter', sans-serif",
+                  outline: 'none', cursor: 'pointer',
+                  appearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A9AB8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 14px center',
+                  paddingRight: 36,
+                }}
+              >
+                <option value="">— Choose a team —</option>
+                {teams.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Price input */}
+            <div style={{ marginBottom: 22 }}>
+              <label style={{
+                display: 'block', fontSize: 9, fontWeight: 800,
+                letterSpacing: 2.5, textTransform: 'uppercase',
+                color: '#8A9AB8', marginBottom: 8,
+              }}>Sold Price (₹)</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{
+                  position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
+                  fontFamily: "'Space Mono', monospace", fontSize: 14, color: '#005A8E', fontWeight: 700,
+                }}>₹</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={sellModal.price}
+                  onChange={e => setSellModal(m => m ? { ...m, price: e.target.value, error: '' } : m)}
+                  style={{
+                    width: '100%', padding: '10px 14px 10px 30px',
+                    borderRadius: 10,
+                    border: '1.5px solid rgba(43,114,212,0.20)',
+                    background: 'rgba(255,255,255,0.9)',
+                    fontSize: 14, fontWeight: 700,
+                    fontFamily: "'Space Mono', monospace",
+                    color: '#005A8E', outline: 'none', boxSizing: 'border-box',
+                  }}
+                  onFocus={e => { e.target.style.borderColor = '#0078C2'; e.target.style.boxShadow = '0 0 0 3px rgba(0,120,194,0.12)'; }}
+                  onBlur={e => { e.target.style.borderColor = 'rgba(43,114,212,0.20)'; e.target.style.boxShadow = 'none'; }}
+                />
+              </div>
+            </div>
+
+            {/* Error */}
+            {sellModal.error && (
+              <div style={{ color: '#E5283F', fontSize: 11, fontWeight: 700, marginBottom: 14, textAlign: 'center' }}>
+                {sellModal.error}
+              </div>
+            )}
+
+            {/* Buttons */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setSellModal(null)}
+                disabled={sellModal.submitting}
+                style={{
+                  flex: 1, padding: '11px 0', borderRadius: 10,
+                  border: '1.5px solid rgba(43,114,212,0.18)',
+                  background: 'rgba(255,255,255,0.9)', color: '#6B7FA0',
+                  fontSize: 13, fontWeight: 800, letterSpacing: 1.5,
+                  textTransform: 'uppercase', cursor: 'pointer',
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  transition: 'all 0.15s',
+                }}
+              >Cancel</button>
+              <button
+                onClick={handleConfirmSold}
+                disabled={sellModal.submitting}
+                style={{
+                  flex: 2, padding: '11px 0', borderRadius: 10,
+                  border: 'none',
+                  background: sellModal.submitting ? 'rgba(0,168,90,0.35)' : '#00A85A',
+                  color: '#fff',
+                  fontSize: 13, fontWeight: 800, letterSpacing: 1.5,
+                  textTransform: 'uppercase',
+                  cursor: sellModal.submitting ? 'not-allowed' : 'pointer',
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  boxShadow: sellModal.submitting ? 'none' : '0 0 18px rgba(0,168,90,0.40)',
+                  transition: 'all 0.15s',
+                }}
+              >{sellModal.submitting ? 'Saving…' : 'Confirm Sale'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Player count ─────────────────────────────── */}
       <div style={{ fontSize: 11, color: '#8A9AB8', letterSpacing: 2, marginBottom: '1rem', textTransform: 'uppercase', fontWeight: 600 }}>
         {filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''} shown
@@ -242,7 +442,8 @@ const PlayerManagementPage: React.FC = () => {
                     skillName={skillName}
                     skillStyle={skillSt}
                     isEven={idx % 2 === 0}
-                    onToggle={handleStatusToggle}
+                    onMarkSold={handleOpenSellModal}
+                    onMarkUnsold={handleMarkUnsold}
                   />
                 );
               })}
@@ -252,6 +453,70 @@ const PlayerManagementPage: React.FC = () => {
       ) : (
         <div style={{ textAlign: 'center', padding: '64px 0', color: '#8A9AB8', fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase' }}>
           No players match the selected filters.
+        </div>
+      )}
+
+      {/* ── SOLD animation overlay ── */}
+      {soldAnim && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 3000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(4,8,15,0.82)',
+          animation: 'sold-backdrop 3.2s ease-in-out forwards',
+          backdropFilter: 'blur(6px)',
+        }}>
+          <FireworksCanvas />
+          <div style={{ textAlign: 'center', animation: 'sold-card 3.2s ease-in-out forwards' }}>
+            <div style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 'clamp(5rem, 12vw, 9rem)',
+              letterSpacing: 12, lineHeight: 1, color: '#00D97E',
+              textShadow: '0 0 40px rgba(0,217,126,0.8), 0 0 80px rgba(0,217,126,0.4)',
+              animation: 'sold-badge 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both',
+            }}>SOLD!</div>
+
+            <div style={{ width: 80, height: 2, background: 'rgba(0,217,126,0.4)', borderRadius: 99, margin: '10px auto 18px' }} />
+
+            <div style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 'clamp(1.4rem, 3vw, 2rem)', fontWeight: 900,
+              letterSpacing: 4, textTransform: 'uppercase', color: '#FFFFFF', marginBottom: 6,
+              animation: 'sold-fade-up 0.5s ease-out 0.4s both',
+            }}>{soldAnim.playerName}</div>
+
+            <div style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: 3,
+              textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 14,
+              animation: 'sold-fade-up 0.5s ease-out 0.55s both',
+            }}>sold to</div>
+
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
+              animation: 'sold-fade-up 0.5s ease-out 0.65s both',
+            }}>
+              {soldAnim.teamLogo && (
+                <img src={soldAnim.teamLogo} alt={soldAnim.teamName} style={{
+                  width: 64, height: 64, objectFit: 'contain', borderRadius: '50%',
+                  border: '2px solid rgba(0,120,194,0.6)',
+                  boxShadow: '0 0 24px rgba(0,120,194,0.5)',
+                  background: 'rgba(255,255,255,0.08)', padding: 4,
+                }} />
+              )}
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+                letterSpacing: 5, color: '#FFD700',
+                textShadow: '0 0 28px rgba(255,215,0,0.85), 0 0 60px rgba(255,215,0,0.4)',
+                textTransform: 'uppercase',
+              }}>{soldAnim.teamName}</div>
+            </div>
+
+            <div style={{
+              fontFamily: "'Space Mono', monospace",
+              fontSize: 'clamp(1.2rem, 2.5vw, 1.8rem)', fontWeight: 700, color: '#00D97E',
+              marginTop: 18, animation: 'sold-fade-up 0.5s ease-out 0.8s both',
+            }}>₹{soldAnim.amount.toLocaleString()}</div>
+          </div>
         </div>
       )}
     </div>
@@ -268,14 +533,15 @@ interface RowProps {
   skillName: string;
   skillStyle: { bg: string; text: string; border: string };
   isEven: boolean;
-  onToggle: (id: number) => void;
+  onMarkSold: (player: Player) => void;
+  onMarkUnsold: (id: number) => void;
 }
 
-const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillName, skillStyle, isEven, onToggle }) => {
+const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillName, skillStyle, isEven, onMarkSold, onMarkUnsold }) => {
   const [hovered, setHovered] = useState(false);
   const [btnHov, setBtnHov]   = useState(false);
   const isSold = p.status === 'SOLD';
-  const btnAccent = isSold ? '#E5283F' : sc.accent;
+  const btnAccent = isSold ? '#E5283F' : '#00A85A';
 
   const rowBg = hovered
     ? `linear-gradient(90deg, ${sc.accent}12 0%, rgba(235,244,255,0.95) 100%)`
@@ -403,7 +669,7 @@ const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillN
       {/* Action */}
       <td style={tdStyle({ padding: '12px 20px 12px 12px' })}>
         <button
-          onClick={() => onToggle(p.id)}
+          onClick={() => isSold ? onMarkUnsold(p.id) : onMarkSold(p)}
           onMouseEnter={() => setBtnHov(true)}
           onMouseLeave={() => setBtnHov(false)}
           style={{
