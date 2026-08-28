@@ -14,6 +14,7 @@ const BG = 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(235,242,252,
 
 const AuctionPage: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
+  const [recentSoldPlayers, setRecentSoldPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [bids, setBids] = useState<Bid[]>([]);
   const [currentPlayerIdx, setCurrentPlayerIdx] = useState(0);
@@ -37,7 +38,11 @@ const AuctionPage: React.FC = () => {
   const introShownForRef = useRef<number | null>(null);
   const [openDropdown, setOpenDropdown] = useState<'group' | null>(null);
 
-  function shuffle<T>(array: T[]): T[] {
+  const [showAuctionIntro, setShowAuctionIntro] = useState(false);
+  const [auctionIntroExiting, setAuctionIntroExiting] = useState(false);
+  const auctionIntroTimers = useRef<number[]>([]);
+
+function shuffle<T>(array: T[]): T[] {
     const arr = [...array];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -55,6 +60,16 @@ const AuctionPage: React.FC = () => {
         else setPlayers([]);
       })
       .catch(err => { setPlayers([]); console.error('Failed to fetch players:', err); });
+
+    fetch('http://localhost:8282/api/players/last-sold')
+      .then(res => res.json())
+      .then((data: unknown) => {
+        if (Array.isArray(data)) setRecentSoldPlayers(data as Player[]);
+        else if (data && typeof data === 'object' && Array.isArray((data as { data?: unknown[] }).data)) {
+          setRecentSoldPlayers((data as { data: Player[] }).data);
+        } else setRecentSoldPlayers([]);
+      })
+      .catch(err => { setRecentSoldPlayers([]); console.error('Failed to fetch recently sold players:', err); });
 
     fetch('http://localhost:8282/api/teams')
       .then(res => res.json())
@@ -130,6 +145,11 @@ const AuctionPage: React.FC = () => {
       @keyframes dropdown-appear{0%{opacity:0;transform:translateY(-6px) scale(0.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
       @keyframes skill-select{0%{transform:scale(1)}50%{transform:scale(0.95)}100%{transform:scale(1)}}
       @keyframes title-glow{0%,100%{text-shadow:0 0 40px rgba(0,200,255,0.15)}50%{text-shadow:0 0 80px rgba(0,200,255,0.35),0 0 120px rgba(0,200,255,0.15)}}
+      @keyframes ab-blast{0%{opacity:0;transform:scale(3.2) translateY(-24px);filter:blur(32px)}58%{opacity:1;transform:scale(0.96);filter:blur(0)}78%{transform:scale(1.03)}100%{opacity:1;transform:scale(1)}}
+      @keyframes ab-glow{0%,100%{text-shadow:0 0 60px rgba(255,215,0,0.55),0 0 120px rgba(255,215,0,0.22)}50%{text-shadow:0 0 130px rgba(255,215,0,0.95),0 0 220px rgba(255,215,0,0.50),0 0 300px rgba(255,110,0,0.28)}}
+      @keyframes ab-badge{0%{opacity:0;transform:scale(0.4) translateY(18px)}68%{transform:scale(1.07)}100%{opacity:1;transform:scale(1)}}
+      @keyframes ab-sub{0%{opacity:0;letter-spacing:26px}100%{opacity:1;letter-spacing:10px}}
+      @keyframes ab-line{0%{width:0%;opacity:0}100%{width:65%;opacity:1}}
     `;
     document.head.appendChild(s);
   }, []);
@@ -363,7 +383,18 @@ const AuctionPage: React.FC = () => {
           {/* Launch */}
           <button
             disabled={!canStart}
-            onClick={() => { setAuctionStarted(true); setOpenDropdown(null); }}
+            onClick={() => {
+              setOpenDropdown(null);
+              setShowAuctionIntro(true);
+              setAuctionIntroExiting(false);
+              const t1 = window.setTimeout(() => setAuctionIntroExiting(true), 4400);
+              const t2 = window.setTimeout(() => {
+                setShowAuctionIntro(false);
+                setAuctionIntroExiting(false);
+                setAuctionStarted(true);
+              }, 4800);
+              auctionIntroTimers.current = [t1, t2];
+            }}
             style={{
               width: '100%', padding: '16px 0',
               borderRadius: 10,
@@ -399,6 +430,169 @@ const AuctionPage: React.FC = () => {
             ? `${selectedSkillObj?.skillName?.replace(/_/g, ' ') ?? ''} · Group ${selectedGroupCode} · Ready`
             : 'Select skill & group to begin'}
         </div>
+
+        {/* ── Auction start cinematic overlay ── */}
+        {showAuctionIntro && (
+          <div
+            onClick={() => {
+              auctionIntroTimers.current.forEach(clearTimeout);
+              setAuctionIntroExiting(true);
+              window.setTimeout(() => {
+                setShowAuctionIntro(false);
+                setAuctionIntroExiting(false);
+                setAuctionStarted(true);
+              }, 420);
+            }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 2000,
+              background: 'rgba(2,6,18,0.99)',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', overflow: 'hidden',
+              opacity: auctionIntroExiting ? 0 : 1,
+              transition: auctionIntroExiting ? 'opacity 0.42s ease-out' : 'opacity 0.18s ease-in',
+            }}
+          >
+            {/* Grid */}
+            <div style={{
+              position: 'absolute', inset: 0, pointerEvents: 'none',
+              backgroundImage: 'linear-gradient(rgba(255,215,0,0.028) 1px,transparent 1px),linear-gradient(90deg,rgba(255,215,0,0.028) 1px,transparent 1px)',
+              backgroundSize: '64px 64px',
+            }} />
+
+            {/* Radial glow */}
+            <div style={{
+              position: 'absolute', width: 900, height: 900, borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,180,0,0.09) 0%, rgba(255,80,0,0.04) 42%, transparent 65%)',
+              pointerEvents: 'none',
+            }} />
+
+            {/* Light beams */}
+            {[-60, -35, -10, 10, 35, 60].map((deg, i) => (
+              <div key={i} style={{
+                position: 'absolute',
+                width: 1.5, height: '190%',
+                background: `linear-gradient(to bottom, transparent 0%, rgba(255,200,50,${0.025 + i * 0.007}) 50%, transparent 100%)`,
+                transform: `rotate(${deg}deg)`,
+                transformOrigin: 'center center',
+                pointerEvents: 'none',
+                animation: `pi-beam 1s cubic-bezier(0.22,1,0.36,1) ${0.04 + i * 0.06}s both`,
+              }} />
+            ))}
+
+            {/* Letterbox bars */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 52, background: '#000', zIndex: 4 }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 52, background: '#000', zIndex: 4 }} />
+
+            {/* Main content */}
+            <div style={{
+              position: 'relative', zIndex: 2, textAlign: 'center',
+              padding: '0 40px', maxWidth: 780, width: '100%',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+            }}>
+
+              {/* EPL label */}
+              <div style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 11, fontWeight: 800, color: '#FFD700',
+                textTransform: 'uppercase', letterSpacing: 8, marginBottom: 18,
+                textShadow: '0 0 22px rgba(255,215,0,0.55)',
+                animation: 'pi-label 0.7s cubic-bezier(0.22,1,0.36,1) 0.08s both',
+              }}>EPL 8 · Grand Auction</div>
+
+              {/* "THE GRAND" */}
+              <div style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 'clamp(1.4rem, 3vw, 2.2rem)',
+                fontWeight: 900, color: 'rgba(255,255,255,0.42)',
+                letterSpacing: 14, textTransform: 'uppercase', lineHeight: 1,
+                marginBottom: 2,
+                animation: 'pi-slide-up 0.5s cubic-bezier(0.22,1,0.36,1) 0.3s both',
+              }}>The Grand</div>
+
+              {/* "AUCTION" — the money shot */}
+              <div style={{
+                fontFamily: "'Bebas Neue', 'Barlow Condensed', sans-serif",
+                fontSize: 'clamp(5.5rem, 16vw, 11rem)',
+                color: '#FFD700',
+                letterSpacing: 12, lineHeight: 0.88,
+                textTransform: 'uppercase',
+                animation: 'ab-blast 0.78s cubic-bezier(0.22,1,0.36,1) 0.38s both, ab-glow 2.8s ease-in-out 1.2s infinite',
+                marginBottom: 10,
+              }}>Auction</div>
+
+              {/* Gold shimmer rule */}
+              <div style={{
+                height: 2, marginBottom: 26, position: 'relative', overflow: 'hidden',
+                background: 'linear-gradient(90deg, transparent, rgba(255,215,0,0.7), transparent)',
+                animation: 'ab-line 0.7s cubic-bezier(0.22,1,0.36,1) 1.05s both',
+                alignSelf: 'stretch',
+              }}>
+                <div style={{
+                  position: 'absolute', top: 0, width: '35%', height: '100%',
+                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.95), transparent)',
+                  animation: 'pi-shimmer 2.4s ease-in-out 1.4s infinite',
+                }} />
+              </div>
+
+              {/* Skill + Group badges */}
+              <div style={{
+                display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 26,
+                animation: 'ab-badge 0.55s cubic-bezier(0.22,1,0.36,1) 1.15s both',
+              }}>
+                {selectedSkillObj && (
+                  <span style={{
+                    padding: '6px 20px', borderRadius: 999,
+                    background: 'rgba(255,215,0,0.12)', border: '1px solid rgba(255,215,0,0.50)',
+                    color: '#FFD700', fontSize: 12, fontWeight: 800, letterSpacing: 2.5,
+                    textTransform: 'uppercase',
+                    textShadow: '0 0 12px rgba(255,215,0,0.4)',
+                  }}>{selectedSkillObj.skillName.replace(/_/g, ' ')}</span>
+                )}
+                {selectedGroupCode && (
+                  <span style={{
+                    padding: '6px 20px', borderRadius: 999,
+                    background: 'rgba(0,200,255,0.10)', border: '1px solid rgba(0,200,255,0.40)',
+                    color: '#00C8FF', fontSize: 12, fontWeight: 800, letterSpacing: 2.5,
+                    textTransform: 'uppercase',
+                  }}>Group {selectedGroupCode}</span>
+                )}
+              </div>
+
+              {/* "LET THE BIDDING BEGIN" */}
+              <div style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 'clamp(1rem, 2.2vw, 1.45rem)',
+                fontWeight: 800, color: 'rgba(255,255,255,0.50)',
+                textTransform: 'uppercase',
+                animation: 'ab-sub 0.75s cubic-bezier(0.22,1,0.36,1) 1.4s both',
+              }}>Let The Bidding Begin</div>
+            </div>
+
+            {/* Countdown bar */}
+            <div style={{
+              position: 'absolute', bottom: 52, left: 0, right: 0, height: 2,
+              background: 'rgba(255,255,255,0.06)', zIndex: 5,
+            }}>
+              <div style={{
+                height: '100%',
+                background: 'linear-gradient(90deg, #FFD700, #FF8C00)',
+                boxShadow: '0 0 10px rgba(255,200,0,0.9)',
+                animation: 'pi-countdown 4.8s linear forwards',
+                animationPlayState: auctionIntroExiting ? 'paused' : 'running',
+              }} />
+            </div>
+
+            {/* Skip hint */}
+            <div style={{
+              position: 'absolute', bottom: 16, left: 0, right: 0, zIndex: 5,
+              textAlign: 'center',
+              fontSize: 10, color: 'rgba(255,255,255,0.16)',
+              letterSpacing: 2.5, fontWeight: 700, textTransform: 'uppercase',
+              fontFamily: "'Barlow Condensed', sans-serif",
+            }}>Click anywhere to skip</div>
+          </div>
+        )}
       </div>
     );
   }
@@ -462,6 +656,18 @@ const AuctionPage: React.FC = () => {
       teamLogo: soldTeam?.logo ?? '',
       amount: soldAmount,
     });
+
+    fetch('http://localhost:8282/api/players/last-sold')
+      .then(res => res.json())
+      .then((data: unknown) => {
+        const recent = Array.isArray(data)
+          ? data
+          : data && typeof data === 'object' && Array.isArray((data as { data?: unknown[] }).data)
+            ? (data as { data: Player[] }).data
+            : [];
+        setRecentSoldPlayers(recent as Player[]);
+      })
+      .catch(err => console.error('Failed to refresh recently sold players:', err));
 
     const nextAuctionPlayers = auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx);
     setTimeout(() => {
@@ -815,15 +1021,17 @@ const AuctionPage: React.FC = () => {
           })}
         </div>
 
-        {/* ── Bid history ── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0, height: '100%' }}>
+        {/* ── Recent auctioned players ── */}
         <div style={{
           background: 'rgba(255,255,255,0.92)',
           border: '1px solid rgba(0,0,0,0.08)',
           borderRadius: 16,
           boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
-          padding: '14px 14px 14px',
+          padding: '12px 12px 10px',
           backdropFilter: 'blur(12px)',
-          height: '100%',
+          flex: '0 0 42%',
+          order: 2,
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -833,8 +1041,63 @@ const AuctionPage: React.FC = () => {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            marginBottom: 14,
-            paddingBottom: 10,
+            marginBottom: 10,
+            paddingBottom: 8,
+            borderBottom: '1px solid rgba(0,0,0,0.07)',
+          }}>
+            <div style={{ width: 3, height: 18, background: '#0078C2', borderRadius: 99, flexShrink: 0 }} />
+            <span style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: '1rem',
+              fontWeight: 700,
+              color: '#1A3362',
+              letterSpacing: 3,
+              textTransform: 'uppercase',
+            }}>Recent Sold Players</span>
+          </div>
+
+          <ul style={{ overflowY: 'auto', padding: 0, listStyle: 'none', margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {recentSoldPlayers.slice(0, 8).map((soldPlayer) => {
+              const soldTeam = teams.find(team => team.id === Number(soldPlayer.teamId));
+              return (
+                <li key={soldPlayer.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 6px', background: 'rgba(0,168,90,0.06)', border: '1px solid rgba(0,168,90,0.16)', borderRadius: 8 }}>
+                  <img src={soldPlayer.photo} alt={soldPlayer.name} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(0,168,90,0.28)' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, color: '#0D1E3E', fontSize: 10.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{soldPlayer.name}</div>
+                    <div style={{ color: '#6B7FA0', fontSize: 9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{soldTeam?.name ?? soldPlayer.teamName ?? '—'}</div>
+                  </div>
+                  <span style={{ fontFamily: "'Space Mono', monospace", color: '#007A45', fontWeight: 700, fontSize: 10, flexShrink: 0 }}>₹{(soldPlayer.soldPrice ?? 0).toLocaleString()}</span>
+                </li>
+              );
+            })}
+            {recentSoldPlayers.length === 0 && (
+              <li style={{ color: '#8A9AB8', fontSize: 11, textAlign: 'center', padding: '18px 0', fontStyle: 'italic' }}>No players auctioned yet.</li>
+            )}
+          </ul>
+        </div>
+
+        {/* ── Bid history ── */}
+        <div style={{
+          background: 'rgba(255,255,255,0.92)',
+          border: '1px solid rgba(0,0,0,0.08)',
+          borderRadius: 16,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+          padding: '12px 12px 10px',
+          backdropFilter: 'blur(12px)',
+          flex: '1 1 0',
+          minHeight: 0,
+          order: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            marginBottom: 10,
+            paddingBottom: 8,
             borderBottom: '1px solid rgba(0,0,0,0.07)',
           }}>
             <div style={{ width: 3, height: 18, background: '#0078C2', borderRadius: 99, flexShrink: 0 }} />
@@ -848,7 +1111,7 @@ const AuctionPage: React.FC = () => {
             }}>Bid History</span>
           </div>
 
-          <ul style={{ overflowY: 'auto', padding: 0, listStyle: 'none', margin: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <ul style={{ overflowY: 'auto', padding: 0, listStyle: 'none', margin: 0, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {bids.filter(b => b.playerId === player.id).slice().reverse().map((bid, idx) => {
               const bidTeam = teams.find(t => t.id === bid.teamId);
               const isLatest = idx === 0;
@@ -894,6 +1157,7 @@ const AuctionPage: React.FC = () => {
               </li>
             )}
           </ul>
+        </div>
         </div>
 
       </div>
