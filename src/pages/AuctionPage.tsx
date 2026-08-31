@@ -9,6 +9,13 @@ interface Bid {
   time: string;
 }
 
+interface SessionSale {
+  playerName: string;
+  teamId: number;
+  teamName: string;
+  amount: number;
+}
+
 const BID_INCREMENT = 2000;
 const BG = 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(235,242,252,0.92) 100%), url(/iStock-2163573192_web.jpg) center/cover no-repeat fixed';
 
@@ -46,6 +53,9 @@ const AuctionPage: React.FC = () => {
   const [showAuctionIntro, setShowAuctionIntro] = useState(false);
   const [auctionIntroExiting, setAuctionIntroExiting] = useState(false);
   const auctionIntroTimers = useRef<number[]>([]);
+  const [sessionSales, setSessionSales] = useState<SessionSale[]>([]);
+  const [showHotDemand, setShowHotDemand] = useState(false);
+  const hotDemandShownRef = useRef(false);
 
 function shuffle<T>(array: T[]): T[] {
     const arr = [...array];
@@ -101,6 +111,12 @@ function shuffle<T>(array: T[]): T[] {
   const availableGroups = selectedSkill > 0
     ? skillGroups.filter(group => Number(group.skillId) === selectedSkill)
     : [];
+
+  const groupsWithPlayers = new Set(
+    players
+      .filter(p => p.status === 'NOT_ASSIGNED' && Number(p.skillId) === selectedSkill)
+      .map(p => p.groupCode)
+  );
 
   useEffect(() => { setSelectedGroupCode(''); }, [selectedSkill]);
 
@@ -166,6 +182,9 @@ function shuffle<T>(array: T[]): T[] {
       @keyframes name-shimmer{0%{transform:translateX(-160%) skewX(-14deg);opacity:0}15%{opacity:0.65}100%{transform:translateX(320%) skewX(-14deg);opacity:0}}
       @keyframes corner-glow{0%,100%{opacity:0.45}50%{opacity:1}}
       .auction-player-card{animation:card-glow 3.5s ease-in-out infinite}
+      @keyframes hot-demand-enter{0%{opacity:0;transform:translateY(-60px) scale(0.8)}18%{opacity:1;transform:translateY(0) scale(1.04)}28%{transform:scale(1)}78%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-30px) scale(0.88)}}
+      @keyframes flame-flicker{0%,100%{text-shadow:0 0 28px rgba(255,140,0,0.9),0 0 55px rgba(255,80,0,0.5),0 2px 4px rgba(0,0,0,0.3)}50%{text-shadow:0 0 55px rgba(255,200,0,0.99),0 0 110px rgba(255,100,0,0.72),0 0 180px rgba(255,50,0,0.35)}}
+@keyframes summary-card-in{0%{opacity:0;transform:translateY(32px) scale(0.94)}100%{opacity:1;transform:translateY(0) scale(1)}}
     `;
     document.head.appendChild(s);
   }, []);
@@ -201,13 +220,28 @@ function shuffle<T>(array: T[]): T[] {
     setTimeout(() => setShowPlayerIntro(false), 380);
   };
 
+  // Reset hot demand flag when player changes
+  useEffect(() => {
+    hotDemandShownRef.current = false;
+  }, [currentPlayerIdx]);
+
+  // Trigger hot demand banner at 10× base price — fires once per player
+  useEffect(() => {
+    const currentPlayer = auctionPlayers[currentPlayerIdx];
+    if (!currentPlayer || hotDemandShownRef.current || currentBid < currentPlayer.basePrice * 2) return;
+    hotDemandShownRef.current = true;
+    setShowHotDemand(true);
+    const t = setTimeout(() => setShowHotDemand(false), 2800);
+    return () => clearTimeout(t);
+  }, [currentBid, auctionPlayers, currentPlayerIdx]);
+
   const introSkillName = introPlayer
     ? (skills.find(s => s.id === Number(introPlayer.skillId))?.skillName ?? introPlayer.skillName ?? '')
     : '';
 
   /* ── Setup screen ─────────────────────────────────────────────────── */
   if (!auctionStarted) {
-    const canStart = !!(selectedSkill && selectedGroupCode);
+    const canStart = !!(selectedSkill && selectedGroupCode && groupsWithPlayers.has(selectedGroupCode));
     const selectedSkillObj = skills.find(s => s.id === selectedSkill);
 
     // Skill color palette matching team card accents
@@ -371,30 +405,38 @@ function shuffle<T>(array: T[]): T[] {
                 }}>
                   {availableGroups.map((group, gi) => {
                     const isChosen = selectedGroupCode === group.groupCode;
+                    const hasPlayers = groupsWithPlayers.has(group.groupCode);
                     return (
                       <button
                         key={group.groupCode}
-                        onClick={() => { setSelectedGroupCode(group.groupCode); setOpenDropdown(null); }}
+                        onClick={() => { if (hasPlayers) { setSelectedGroupCode(group.groupCode); setOpenDropdown(null); } }}
+                        disabled={!hasPlayers}
                         style={{
                           width: '100%', padding: '12px 18px',
                           background: isChosen ? 'rgba(0,120,194,0.08)' : 'transparent',
                           border: 'none',
                           borderBottom: gi < availableGroups.length - 1 ? '1px solid rgba(43,114,212,0.07)' : 'none',
-                          color: isChosen ? '#005A8E' : '#4A6080',
-                          cursor: 'pointer',
+                          color: !hasPlayers ? '#B0BDD0' : isChosen ? '#005A8E' : '#4A6080',
+                          cursor: hasPlayers ? 'pointer' : 'not-allowed',
+                          opacity: hasPlayers ? 1 : 0.5,
                           fontFamily: "'Barlow Condensed', sans-serif",
                           fontSize: 16, fontWeight: 800, letterSpacing: 2,
                           textTransform: 'uppercase', textAlign: 'left',
                           display: 'flex', alignItems: 'center', gap: 10,
                           transition: 'background 0.12s, color 0.12s',
                         }}
-                        onMouseEnter={e => { if (!isChosen) { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,120,194,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = '#005A8E'; } }}
-                        onMouseLeave={e => { if (!isChosen) { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = '#4A6080'; } }}
+                        onMouseEnter={e => { if (hasPlayers && !isChosen) { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,120,194,0.05)'; (e.currentTarget as HTMLButtonElement).style.color = '#005A8E'; } }}
+                        onMouseLeave={e => { if (hasPlayers && !isChosen) { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = '#4A6080'; } }}
                       >
-                        <span style={{ fontSize: 11, color: isChosen ? '#0078C2' : '#C0CCDB' }}>
+                        <span style={{ fontSize: 11, color: !hasPlayers ? '#C0CCDB' : isChosen ? '#0078C2' : '#C0CCDB' }}>
                           {isChosen ? '●' : '○'}
                         </span>
                         Group {group.groupCode}
+                        {!hasPlayers && (
+                          <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, letterSpacing: 1, color: '#C0CCDB', textTransform: 'uppercase' }}>
+                            No players
+                          </span>
+                        )}
                       </button>
                     );
                   })}
@@ -620,11 +662,187 @@ function shuffle<T>(array: T[]): T[] {
     );
   }
 
-  if (auctionPlayers.length === 0 || teams.length === 0) {
+  if (teams.length === 0) {
     return (
       <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#1A3362', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '2rem', letterSpacing: 2 }}>
-          All players auctioned or no players for selected skill!
+        <div style={{ color: '#1A3362', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '2rem', letterSpacing: 2 }}>Loading teams…</div>
+      </div>
+    );
+  }
+
+  if (auctionPlayers.length === 0) {
+    if (sessionSales.length === 0) {
+      return (
+        <div style={{ minHeight: '100vh', background: BG, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ color: '#1A3362', fontFamily: "'Barlow Condensed', sans-serif", fontSize: '2rem', letterSpacing: 2 }}>
+            All players auctioned or no players for selected skill!
+          </div>
+        </div>
+      );
+    }
+
+    // ── Session summary ────────────────────────────────────────────────
+    const summaryTotalSpend = sessionSales.reduce((s, x) => s + x.amount, 0);
+    const summaryTopSale = sessionSales.reduce((a, b) => a.amount > b.amount ? a : b);
+    const summaryAvgPrice = Math.round(summaryTotalSpend / sessionSales.length);
+    const summaryTeamSpend: { [id: number]: number } = {};
+    sessionSales.forEach(s => { summaryTeamSpend[s.teamId] = (summaryTeamSpend[s.teamId] ?? 0) + s.amount; });
+    let biggestSpenderId = 0;
+    let biggestSpend = 0;
+    Object.entries(summaryTeamSpend).forEach(([id, amt]) => { if (amt > biggestSpend) { biggestSpenderId = Number(id); biggestSpend = amt; } });
+    const biggestSpenderTeam = teams.find(t => t.id === biggestSpenderId);
+
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'radial-gradient(ellipse at 50% 30%, rgba(0,25,55,0.99) 0%, rgba(2,6,18,0.99) 70%)',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        overflow: 'hidden', position: 'relative',
+        padding: '40px 20px',
+      }}>
+        {/* Grid background */}
+        <div style={{
+          position: 'absolute', inset: 0, pointerEvents: 'none',
+          backgroundImage: 'linear-gradient(rgba(255,215,0,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,215,0,0.025) 1px,transparent 1px)',
+          backgroundSize: '72px 72px',
+        }} />
+        <div style={{
+          position: 'absolute', width: 800, height: 800, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,180,0,0.07) 0%, transparent 65%)',
+          pointerEvents: 'none',
+        }} />
+
+        <div style={{ position: 'relative', zIndex: 2, width: '100%', maxWidth: 720, textAlign: 'center' }}>
+          {/* Label */}
+          <div style={{
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: 11, fontWeight: 800, color: '#FFD700',
+            letterSpacing: 8, textTransform: 'uppercase', marginBottom: 12,
+            textShadow: '0 0 18px rgba(255,215,0,0.5)',
+            animation: 'pi-label 0.7s ease-out 0.1s both',
+          }}>EPL 8 · Grand Auction</div>
+
+          {/* Headline */}
+          <div style={{
+            fontFamily: "'Bebas Neue', 'Barlow Condensed', sans-serif",
+            fontSize: 'clamp(3.5rem, 10vw, 7rem)',
+            color: '#FFD700', letterSpacing: 8, lineHeight: 1,
+            textShadow: '0 0 60px rgba(255,215,0,0.65), 0 0 120px rgba(255,215,0,0.30)',
+            animation: 'ab-blast 0.8s cubic-bezier(0.22,1,0.36,1) 0.2s both, ab-glow 2.8s ease-in-out 1s infinite',
+            marginBottom: 8,
+          }}>Auction Complete</div>
+
+          <div style={{
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: '1rem', fontWeight: 800,
+            color: 'rgba(255,255,255,0.35)', letterSpacing: 5,
+            textTransform: 'uppercase', marginBottom: 32,
+            animation: 'pi-slide-up 0.5s ease-out 0.55s both',
+          }}>
+            {selectedGroupCode ? `Group ${selectedGroupCode} · ` : ''}Final Summary
+          </div>
+
+          {/* Gold rule */}
+          <div style={{
+            height: 2, marginBottom: 32,
+            background: 'linear-gradient(90deg, transparent, rgba(255,215,0,0.65), transparent)',
+            animation: 'ab-line 0.6s ease-out 0.7s both',
+          }} />
+
+          {/* Stat cards */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16,
+            animation: 'summary-card-in 0.6s cubic-bezier(0.22,1,0.36,1) 0.85s both',
+          }}>
+            {[
+              { label: 'Players Sold', value: String(sessionSales.length), color: '#00D97E', icon: '⚡', sub: undefined as string | undefined },
+              { label: 'Total Spend', value: `₹${summaryTotalSpend.toLocaleString()}`, color: '#FFB547', icon: '💰', sub: undefined as string | undefined },
+              { label: 'Highest Sale', value: `₹${summaryTopSale.amount.toLocaleString()}`, color: '#FF6B6B', icon: '🏆', sub: summaryTopSale.playerName },
+              { label: 'Average Price', value: `₹${summaryAvgPrice.toLocaleString()}`, color: '#B983FF', icon: '📊', sub: undefined as string | undefined },
+            ].map(stat => (
+              <div key={stat.label} style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: `1px solid ${stat.color}28`,
+                borderTop: `2px solid ${stat.color}65`,
+                borderRadius: 14, padding: '18px 14px 16px',
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 22, marginBottom: 8 }}>{stat.icon}</div>
+                <div style={{
+                  fontSize: 8, fontWeight: 800, letterSpacing: 2.5,
+                  color: 'rgba(255,255,255,0.32)', textTransform: 'uppercase',
+                  marginBottom: 8, fontFamily: "'Barlow Condensed', sans-serif",
+                }}>{stat.label}</div>
+                <div style={{
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: '1.3rem', fontWeight: 700,
+                  color: stat.color, textShadow: `0 0 18px ${stat.color}55`,
+                  lineHeight: 1,
+                }}>{stat.value}</div>
+                {stat.sub && (
+                  <div style={{
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    fontSize: 11, color: 'rgba(255,255,255,0.40)', marginTop: 5, letterSpacing: 1,
+                  }}>{stat.sub}</div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Biggest spender */}
+          {biggestSpenderTeam && (
+            <div style={{
+              background: 'rgba(0,120,194,0.08)',
+              border: '1px solid rgba(0,200,255,0.22)',
+              borderRadius: 14, padding: '14px 20px',
+              display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28,
+              animation: 'summary-card-in 0.6s cubic-bezier(0.22,1,0.36,1) 1.0s both',
+            }}>
+              <img src={biggestSpenderTeam.logo} alt={biggestSpenderTeam.name} style={{
+                width: 52, height: 52, borderRadius: '50%', objectFit: 'contain',
+                border: '2px solid rgba(0,200,255,0.35)',
+                background: 'rgba(255,255,255,0.08)', padding: 3,
+              }} />
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{
+                  fontSize: 7, fontWeight: 800, letterSpacing: 2.5,
+                  color: 'rgba(0,200,255,0.50)', textTransform: 'uppercase',
+                  fontFamily: "'Barlow Condensed', sans-serif", marginBottom: 3,
+                }}>Biggest Spender</div>
+                <div style={{
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontSize: '1.2rem', fontWeight: 900,
+                  color: '#FFFFFF', letterSpacing: 2, textTransform: 'uppercase',
+                }}>{biggestSpenderTeam.name}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{
+                  fontFamily: "'Space Mono', monospace",
+                  fontSize: '1.1rem', fontWeight: 700,
+                  color: '#00C8FF', textShadow: '0 0 18px rgba(0,200,255,0.5)',
+                }}>₹{biggestSpend.toLocaleString()}</div>
+                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.28)', letterSpacing: 1 }}>
+                  {Math.round((biggestSpend / summaryTotalSpend) * 100)}% of total
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* New auction button */}
+          <button
+            onClick={() => { setSessionSales([]); setAuctionStarted(false); setSelectedGroupCode(''); setBids([]); }}
+            style={{
+              padding: '14px 48px', borderRadius: 999, border: 'none',
+              background: 'linear-gradient(135deg, #0088E0 0%, #0060A8 100%)',
+              color: '#fff',
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 18, fontWeight: 900, letterSpacing: 4,
+              textTransform: 'uppercase', cursor: 'pointer',
+              boxShadow: '0 0 30px rgba(0,136,224,0.5), 0 6px 24px rgba(0,0,0,0.4)',
+              animation: 'summary-card-in 0.6s cubic-bezier(0.22,1,0.36,1) 1.2s both',
+            }}
+          >Start New Auction</button>
         </div>
       </div>
     );
@@ -687,6 +905,13 @@ function shuffle<T>(array: T[]): T[] {
       teamLogo: soldTeam?.logo ?? '',
       amount: soldAmount,
     });
+
+    setSessionSales(prev => [...prev, {
+      playerName: player.name,
+      teamId: currentBidTeam ?? 0,
+      teamName: soldTeam?.name ?? '—',
+      amount: soldAmount,
+    }]);
 
     fetch('http://localhost:8282/api/players/last-sold')
       .then(res => res.json())
@@ -1171,26 +1396,40 @@ function shuffle<T>(array: T[]): T[] {
 
                 {/* Bid buttons */}
                 <div style={{ display: 'flex', gap: 5, width: '100%' }}>
-                  <button
-                    onClick={(e) => { const amount = currentBid === 0 ? player.basePrice : currentBid + BID_INCREMENT; triggerFlyAnim(e.currentTarget, amount); handleBid(team.id, true); }}
-                    disabled={isLeader}
-                    style={{
-                      flex: 1,
-                      background: isLeader
-                        ? 'rgba(0,217,126,0.15)'
-                        : 'linear-gradient(135deg, #00D97E 0%, #00B868 100%)',
-                      color: isLeader ? 'rgba(0,217,126,0.45)' : '#04080F',
-                      border: 'none',
-                      borderRadius: 7,
-                      padding: '7px 0',
-                      cursor: isLeader ? 'not-allowed' : 'pointer',
-                      fontSize: 15,
-                      fontWeight: 900,
-                      lineHeight: 1,
-                      boxShadow: isLeader ? 'none' : '0 3px 12px rgba(0,217,126,0.45)',
-                      transition: 'transform 0.1s, box-shadow 0.1s',
-                    }}
-                  >↑</button>
+                  {(() => {
+                    const nextAmount = currentBid === 0 ? player.basePrice : currentBid + BID_INCREMENT;
+                    const canAffordBid = (teamPurse[team.id] ?? 0) >= nextAmount;
+                    const disabledUp = isLeader || !canAffordBid;
+                    return (
+                      <button
+                        onClick={(e) => { triggerFlyAnim(e.currentTarget, nextAmount); handleBid(team.id, true); }}
+                        disabled={disabledUp}
+                        title={!canAffordBid && !isLeader ? `Insufficient funds — ₹${nextAmount.toLocaleString()} required` : undefined}
+                        style={{
+                          flex: 1,
+                          background: isLeader
+                            ? 'rgba(0,217,126,0.15)'
+                            : !canAffordBid
+                              ? 'rgba(245,166,35,0.11)'
+                              : 'linear-gradient(135deg, #00D97E 0%, #00B868 100%)',
+                          color: isLeader
+                            ? 'rgba(0,217,126,0.45)'
+                            : !canAffordBid
+                              ? 'rgba(245,166,35,0.48)'
+                              : '#04080F',
+                          border: !canAffordBid && !isLeader ? '1px solid rgba(245,166,35,0.26)' : 'none',
+                          borderRadius: 7,
+                          padding: '7px 0',
+                          cursor: disabledUp ? 'not-allowed' : 'pointer',
+                          fontSize: 15,
+                          fontWeight: 900,
+                          lineHeight: 1,
+                          boxShadow: disabledUp ? 'none' : '0 3px 12px rgba(0,217,126,0.45)',
+                          transition: 'transform 0.1s, box-shadow 0.1s',
+                        }}
+                      >↑</button>
+                    );
+                  })()}
                   <button
                     onClick={() => { if (canDecrement) { setBidDownPending(team.id); setBidDownPassword(''); setBidDownPwError(''); } }}
                     disabled={!canDecrement}
@@ -1745,6 +1984,39 @@ function shuffle<T>(array: T[]): T[] {
           } as React.CSSProperties}
         >
           ₹{flyAnim.amount.toLocaleString()}
+        </div>
+      )}
+
+      {/* ── Hot demand banner ── */}
+      {showHotDemand && (
+        <div style={{
+          position: 'fixed', top: '9%', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 2500, pointerEvents: 'none',
+          animation: 'hot-demand-enter 2.8s ease-in-out forwards',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(28,10,0,0.96) 0%, rgba(18,7,0,0.96) 100%)',
+            border: '2px solid rgba(255,140,0,0.62)',
+            borderRadius: 18, padding: '16px 52px 18px',
+            boxShadow: '0 0 60px rgba(255,100,0,0.45), 0 0 120px rgba(255,60,0,0.22), 0 12px 40px rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+          }}>
+            <div style={{ fontSize: 32, lineHeight: 1, marginBottom: 2 }}>🔥</div>
+            <div style={{
+              fontFamily: "'Bebas Neue', 'Barlow Condensed', sans-serif",
+              fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
+              color: '#FF8C00', letterSpacing: 5, textTransform: 'uppercase', lineHeight: 1,
+              animation: 'flame-flicker 0.55s ease-in-out infinite',
+            }}>Player in Hot Demand!</div>
+            <div style={{
+              fontFamily: "'Barlow Condensed', sans-serif",
+              fontSize: 11, fontWeight: 800,
+              color: 'rgba(255,180,50,0.68)',
+              letterSpacing: 3.5, textTransform: 'uppercase', marginTop: 2,
+            }}>Bid Hits 5× Base Price</div>
+          </div>
         </div>
       )}
 
