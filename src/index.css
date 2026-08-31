@@ -119,11 +119,11 @@ body {
 .auction-title {
   position: relative;
   width: fit-content;
-  margin: 0 auto 1rem;
-  padding: 0.35rem 1.5rem 0.6rem;
+  margin: 0 auto 0.4rem;
+  padding: 0.2rem 1.5rem 0.35rem;
   color: #005A8E;
   font-family: var(--font-display);
-  font-size: clamp(2.2rem, 5vw, 4rem);
+  font-size: clamp(1.6rem, 3vw, 2.6rem);
   font-weight: 900;
   line-height: 1.05;
   letter-spacing: 5px;
