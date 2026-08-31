@@ -767,31 +767,25 @@ function shuffle<T>(array: T[]): T[] {
             <span style={{ opacity: 0.5, marginLeft: 8 }}>◆</span>
           </div>
 
-          {/* Photo */}
-          <div style={{ position: 'relative', width: '100%', flexShrink: 0, overflow: 'hidden' }}>
+          {/* Photo — flex: 1 so it expands to fill whatever space the compact body doesn't need */}
+          <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 180, overflow: 'hidden' }}>
             <img
               src={player.photo}
               alt={player.name}
               style={{
-                width: '100%', height: 165, objectFit: 'cover', objectPosition: 'top center', display: 'block',
-                filter: 'brightness(0.88) contrast(1.08) saturate(1.1)',
+                width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block',
+                filter: 'brightness(0.95) contrast(1.04) saturate(1.05)',
               }}
             />
-            {/* Dark navy color wash — kills the white photo background */}
+            {/* Soft radial vignette — only darkens edges, face stays clear */}
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'rgba(6,17,31,0.32)',
-              mixBlendMode: 'multiply',
-            }} />
-            {/* Strong radial vignette — face spotlight */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'radial-gradient(ellipse 65% 75% at 50% 38%, transparent 30%, rgba(4,12,26,0.75) 75%, rgba(4,12,26,0.96) 100%)',
+              background: 'radial-gradient(ellipse 70% 80% at 50% 35%, transparent 40%, rgba(4,12,26,0.55) 80%, rgba(4,12,26,0.88) 100%)',
             }} />
             {/* Bottom fade into card */}
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'linear-gradient(to bottom, rgba(6,17,31,0.25) 0%, transparent 25%, transparent 55%, rgba(6,17,31,0.85) 82%, rgba(6,17,31,1) 100%)',
+              background: 'linear-gradient(to bottom, rgba(6,17,31,0.15) 0%, transparent 30%, transparent 60%, rgba(6,17,31,0.80) 85%, rgba(6,17,31,1) 100%)',
             }} />
             {/* Scanline overlay */}
             <div style={{
@@ -804,37 +798,16 @@ function shuffle<T>(array: T[]): T[] {
               background: 'linear-gradient(90deg, transparent 0%, rgba(0,200,255,0.6) 40%, rgba(0,200,255,0.6) 60%, transparent 100%)',
               boxShadow: '0 0 12px rgba(0,200,255,0.5)',
             }} />
-            {/* Badges */}
-            <div style={{ position: 'absolute', bottom: 9, left: 10, right: 10, display: 'flex', gap: 5 }}>
-              <span style={{
-                background: player.isNewPlayer === 1 ? 'rgba(255,184,0,0.18)' : 'rgba(0,180,255,0.15)',
-                color: player.isNewPlayer === 1 ? '#FFB800' : '#00C8FF',
-                border: `1px solid ${player.isNewPlayer === 1 ? 'rgba(255,184,0,0.45)' : 'rgba(0,200,255,0.40)'}`,
-                padding: '2px 8px', borderRadius: 999, fontSize: 8, fontWeight: 800, letterSpacing: 1.2,
-                textTransform: 'uppercase',
-              }}>
-                {player.isNewPlayer === 1 ? 'New' : 'Veteran'}
-              </span>
-              <span style={{
-                background: 'rgba(0,217,126,0.12)',
-                color: '#00D97E',
-                border: '1px solid rgba(0,217,126,0.35)',
-                padding: '2px 8px', borderRadius: 999, fontSize: 8, fontWeight: 800, letterSpacing: 1.2,
-                textTransform: 'uppercase',
-              }}>
-                GRP: {player.groupCode || '—'}
-              </span>
-            </div>
           </div>
 
-          {/* Body */}
-          <div style={{ padding: '7px 10px 10px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+          {/* Body — no flex: 1; compact natural height so photo above takes the rest */}
+          <div style={{ padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
 
             {/* Player name */}
             <div style={{ textAlign: 'center' }}>
               <div style={{
                 fontFamily: "'Barlow Condensed', sans-serif",
-                fontSize: '1.42rem', fontWeight: 900,
+                fontSize: '1.15rem', fontWeight: 900,
                 color: '#FFFFFF',
                 textTransform: 'uppercase', letterSpacing: 1.5,
                 lineHeight: 1.1,
@@ -848,7 +821,7 @@ function shuffle<T>(array: T[]): T[] {
               const entries = Object.entries(player.stats || {});
               const isOdd = entries.length % 2 !== 0;
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
                   {entries.map(([key, value], i) => {
                     const c = statColors[i % statColors.length];
                     return (
@@ -856,27 +829,27 @@ function shuffle<T>(array: T[]): T[] {
                         background: `linear-gradient(135deg, ${c}15 0%, ${c}07 100%)`,
                         border: `1px solid ${c}25`,
                         borderTop: `2px solid ${c}70`,
-                        borderRadius: 8,
-                        padding: '6px 8px 5px',
+                        borderRadius: 7,
+                        padding: '4px 6px 3px',
                         textAlign: 'center',
                         position: 'relative', overflow: 'hidden',
                         gridColumn: isOdd && i === 0 ? '1 / -1' : undefined,
                       }}>
                         <div style={{
-                          position: 'absolute', top: -10, right: -10,
-                          width: 40, height: 40, borderRadius: '50%',
+                          position: 'absolute', top: -8, right: -8,
+                          width: 30, height: 30, borderRadius: '50%',
                           background: `radial-gradient(circle, ${c}22 0%, transparent 70%)`,
                           pointerEvents: 'none',
                         }} />
                         <div style={{
                           fontFamily: "'Space Mono', monospace",
-                          fontSize: 17, fontWeight: 700, color: c,
+                          fontSize: 13, fontWeight: 700, color: c,
                           lineHeight: 1,
-                          textShadow: `0 0 12px ${c}55`,
+                          textShadow: `0 0 10px ${c}55`,
                         }}>{value}</div>
                         <div style={{
-                          fontSize: 8, fontWeight: 800, color: 'rgba(255,255,255,0.35)',
-                          textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 3,
+                          fontSize: 7, fontWeight: 800, color: 'rgba(255,255,255,0.35)',
+                          textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 2,
                         }}>{key}</div>
                       </div>
                     );
@@ -885,18 +858,15 @@ function shuffle<T>(array: T[]): T[] {
               );
             })()}
 
-            {/* Bid panel */}
+            {/* Bid panel — auto height, no stretching */}
             <div style={{
               background: 'rgba(0,0,0,0.30)',
               border: '1px solid rgba(0,150,220,0.18)',
               borderRadius: 10,
-              padding: '9px 12px',
+              padding: '6px 8px',
               textAlign: 'center',
-              flex: 1,
               display: 'flex', flexDirection: 'column',
-              gap: 2,
-              minHeight: 0,
-              overflow: 'hidden',
+              gap: 6,
             }}>
               {/* Auction intel + base price */}
               {(() => {
@@ -912,7 +882,7 @@ function shuffle<T>(array: T[]): T[] {
                   { label: 'Next Bid', value: `₹${nextBid.toLocaleString()}`, color: '#FFB547', glow: 'rgba(255,181,71,0.35)' },
                 ];
                 return (
-                  <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: 'auto 1fr 1fr', gap: 6, padding: '2px 0' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: '1px 0' }}>
                     {/* Base price — full width */}
                     <div style={{
                       gridColumn: '1 / -1',
@@ -935,44 +905,46 @@ function shuffle<T>(array: T[]): T[] {
                         background: 'rgba(255,255,255,0.04)',
                         border: '1px solid rgba(255,255,255,0.07)',
                         borderTop: `2px solid ${tile.color}55`,
-                        borderRadius: 8, padding: '8px',
+                        borderRadius: 7, padding: '5px 6px',
                         textAlign: 'center',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
                       }}>
                         <div style={{
                           fontFamily: "'Space Mono', monospace", fontWeight: 700,
-                          fontSize: 18, color: tile.color,
-                          textShadow: `0 0 14px ${tile.glow}`,
+                          fontSize: 14, color: tile.color,
+                          textShadow: `0 0 10px ${tile.glow}`,
                           lineHeight: 1,
                         }}>{tile.value}</div>
-                        <div style={{ fontSize: 7, letterSpacing: 1.8, color: 'rgba(255,255,255,0.32)', textTransform: 'uppercase', fontWeight: 800 }}>{tile.label}</div>
+                        <div style={{ fontSize: 6.5, letterSpacing: 1.5, color: 'rgba(255,255,255,0.32)', textTransform: 'uppercase', fontWeight: 800 }}>{tile.label}</div>
                       </div>
                     ))}
                   </div>
                 );
               })()}
 
-              {/* Divider */}
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '3px 0' }} />
+              {/* Current bid + leader */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.06)', marginBottom: 4 }} />
 
-              <div style={{ fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', fontWeight: 800 }}>Current Bid</div>
-              <div
-                key={currentBid}
-                ref={currentBidRef}
-                style={{
-                  fontFamily: "'Space Mono', monospace",
-                  fontSize: currentBid > 0 ? '1.85rem' : '1.5rem',
-                  fontWeight: 700,
-                  color: currentBid > 0 ? '#00D97E' : 'rgba(255,255,255,0.20)',
-                  lineHeight: 1,
-                  marginBottom: 4,
-                  textShadow: currentBid > 0 ? '0 0 22px rgba(0,217,126,0.55)' : 'none',
-                  animation: currentBid > 0 ? 'bid-receive 0.45s cubic-bezier(0.22,1,0.36,1) both' : undefined,
-                }}>₹{currentBid.toLocaleString()}</div>
+                <div style={{ fontSize: 7, letterSpacing: 3, color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', fontWeight: 800 }}>Current Bid</div>
+                <div
+                  key={currentBid}
+                  ref={currentBidRef}
+                  style={{
+                    fontFamily: "'Space Mono', monospace",
+                    fontSize: currentBid > 0 ? '1.55rem' : '1.25rem',
+                    fontWeight: 700,
+                    color: currentBid > 0 ? '#00D97E' : 'rgba(255,255,255,0.20)',
+                    lineHeight: 1,
+                    marginBottom: 2,
+                    textShadow: currentBid > 0 ? '0 0 22px rgba(0,217,126,0.55)' : 'none',
+                    animation: currentBid > 0 ? 'bid-receive 0.45s cubic-bezier(0.22,1,0.36,1) both' : undefined,
+                  }}>₹{currentBid.toLocaleString()}</div>
 
-              <div style={{ fontSize: 8, letterSpacing: 3, color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 2 }}>Leader</div>
-              <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '1rem', color: '#00D97E', letterSpacing: 0.5 }}>
-                {currentBidTeam ? teams.find(t => t.id === currentBidTeam)?.name : '—'}
+                <div style={{ fontSize: 7, letterSpacing: 3, color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 1 }}>Leader</div>
+                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: '#00D97E', letterSpacing: 0.5 }}>
+                  {currentBidTeam ? teams.find(t => t.id === currentBidTeam)?.name : '—'}
+                </div>
               </div>
             </div>
 
