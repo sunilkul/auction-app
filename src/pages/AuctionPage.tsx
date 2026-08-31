@@ -160,6 +160,12 @@ function shuffle<T>(array: T[]): T[] {
       @keyframes bid-radar{0%{transform:scale(0.6);opacity:0.8}100%{transform:scale(2.2);opacity:0}}
       @keyframes bid-dot-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
       @keyframes bid-row-in{0%{opacity:0;transform:translateX(-10px)}100%{opacity:1;transform:translateX(0)}}
+      @keyframes card-glow{0%,100%{box-shadow:0 8px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(0,150,220,0.20),inset 0 1px 0 rgba(255,255,255,0.06)}50%{box-shadow:0 8px 60px rgba(0,0,0,0.5),0 0 28px rgba(0,150,220,0.50),0 0 60px rgba(0,150,220,0.20),0 0 0 1px rgba(0,200,255,0.45),inset 0 1px 0 rgba(255,255,255,0.06)}}
+      @keyframes live-blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.2;transform:scale(0.6)}}
+      @keyframes stat-enter{0%{opacity:0;transform:translateY(9px) scale(0.91)}100%{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes name-shimmer{0%{transform:translateX(-160%) skewX(-14deg);opacity:0}15%{opacity:0.65}100%{transform:translateX(320%) skewX(-14deg);opacity:0}}
+      @keyframes corner-glow{0%,100%{opacity:0.45}50%{opacity:1}}
+      .auction-player-card{animation:card-glow 3.5s ease-in-out infinite}
     `;
     document.head.appendChild(s);
   }, []);
@@ -738,23 +744,41 @@ function shuffle<T>(array: T[]): T[] {
         <div
           key={player.id}
           id="playerInfo"
-          className="player-info-enter"
+          className="player-info-enter auction-player-card"
           style={{
-            background: 'linear-gradient(175deg, #06111f 0%, #0a1e38 55%, #081828 100%)',
-            border: '1px solid rgba(0,150,220,0.18)',
+            background: 'linear-gradient(175deg, #06111f 0%, #0c2040 55%, #081828 100%)',
+            border: '1px solid rgba(0,150,220,0.22)',
             borderRadius: 16,
-            boxShadow: '0 8px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05)',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
+            position: 'relative',
           }}
         >
+          {/* Corner brackets */}
+          {(['tl','tr','bl','br'] as const).map((c, i) => (
+            <div key={c} style={{
+              position: 'absolute', zIndex: 10, pointerEvents: 'none',
+              top: c[0] === 't' ? 8 : undefined,
+              bottom: c[0] === 'b' ? 8 : undefined,
+              left: c[1] === 'l' ? 8 : undefined,
+              right: c[1] === 'r' ? 8 : undefined,
+              width: 14, height: 14,
+              borderTop: c[0] === 't' ? '2px solid rgba(0,200,255,0.80)' : 'none',
+              borderBottom: c[0] === 'b' ? '2px solid rgba(0,200,255,0.80)' : 'none',
+              borderLeft: c[1] === 'l' ? '2px solid rgba(0,200,255,0.80)' : 'none',
+              borderRight: c[1] === 'r' ? '2px solid rgba(0,200,255,0.80)' : 'none',
+              animation: 'corner-glow 2.4s ease-in-out infinite',
+              animationDelay: `${i * 0.6}s`,
+            }} />
+          ))}
+
           {/* Header bar */}
           <div style={{
             textAlign: 'center',
-            background: 'linear-gradient(90deg, transparent, rgba(0,150,220,0.18), transparent)',
-            borderBottom: '1px solid rgba(0,180,255,0.15)',
+            background: 'linear-gradient(90deg, transparent, rgba(0,150,220,0.25), transparent)',
+            borderBottom: '1px solid rgba(0,180,255,0.20)',
             padding: '7px 14px',
             fontFamily: "'Barlow Condensed', sans-serif",
             fontSize: 10, fontWeight: 900, letterSpacing: 5,
@@ -765,15 +789,26 @@ function shuffle<T>(array: T[]): T[] {
             <span style={{ opacity: 0.5, marginRight: 8 }}>◆</span>
             Auction Player
             <span style={{ opacity: 0.5, marginLeft: 8 }}>◆</span>
+            {/* LIVE indicator */}
+            <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{
+                width: 6, height: 6, borderRadius: '50%',
+                background: '#FF3D5A',
+                boxShadow: '0 0 8px rgba(255,61,90,0.9), 0 0 16px rgba(255,61,90,0.4)',
+                animation: 'live-blink 1.3s ease-in-out infinite',
+              }} />
+              <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: 1.5, color: 'rgba(255,80,100,0.85)', textTransform: 'uppercase' }}>Live</span>
+            </div>
           </div>
 
-          {/* Photo — flex: 1 so it expands to fill whatever space the compact body doesn't need */}
-          <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 180, overflow: 'hidden' }}>
+          {/* Photo — flex 2 = 40% of remaining card space; img absolutely fills the wrapper */}
+          <div style={{ position: 'relative', width: '100%', flexGrow: 2, flexShrink: 1, flexBasis: 0, minHeight: 160, overflow: 'hidden' }}>
             <img
               src={player.photo}
               alt={player.name}
               style={{
-                width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block',
+                position: 'absolute', inset: 0,
+                width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center',
                 filter: 'brightness(0.95) contrast(1.04) saturate(1.05)',
               }}
             />
@@ -796,61 +831,71 @@ function shuffle<T>(array: T[]): T[] {
             <div style={{
               position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
               background: 'linear-gradient(90deg, transparent 0%, rgba(0,200,255,0.6) 40%, rgba(0,200,255,0.6) 60%, transparent 100%)',
-              boxShadow: '0 0 12px rgba(0,200,255,0.5)',
+              boxShadow: '0 0 14px rgba(0,200,255,0.6)',
             }} />
-          </div>
-
-          {/* Body — no flex: 1; compact natural height so photo above takes the rest */}
-          <div style={{ padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-
-            {/* Player name */}
-            <div style={{ textAlign: 'center' }}>
+            {/* Player name overlaid on photo — bold sports-card style */}
+            <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, textAlign: 'center', padding: '0 12px' }}>
               <div style={{
                 fontFamily: "'Barlow Condensed', sans-serif",
-                fontSize: '1.15rem', fontWeight: 900,
+                fontSize: '1.55rem', fontWeight: 900,
                 color: '#FFFFFF',
-                textTransform: 'uppercase', letterSpacing: 1.5,
-                lineHeight: 1.1,
-                textShadow: '0 0 24px rgba(0,200,255,0.22)',
-              }}>{player.name}</div>
+                textTransform: 'uppercase', letterSpacing: 2.5,
+                lineHeight: 1,
+                textShadow: '0 0 28px rgba(0,200,255,0.6), 0 2px 10px rgba(0,0,0,0.95), 0 0 55px rgba(0,200,255,0.25)',
+                position: 'relative', overflow: 'hidden', display: 'inline-block',
+              }}>
+                {player.name}
+                {/* shimmer sweep */}
+                <div style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none',
+                  background: 'linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.38) 50%, transparent 62%)',
+                  animation: 'name-shimmer 4s ease-in-out infinite',
+                  animationDelay: '1.2s',
+                }} />
+              </div>
             </div>
+          </div>
+
+          {/* Body — flex 3 = 60% of remaining card space */}
+          <div style={{ padding: '4px 8px 8px', display: 'flex', flexDirection: 'column', gap: 4, flexGrow: 3, flexShrink: 1, flexBasis: 0, minHeight: 0 }}>
 
             {/* Stats grid — colorful tiles */}
             {Object.keys(player.stats || {}).length > 0 && (() => {
               const statColors = ['#00C8FF', '#00D97E', '#F5A623', '#FF3D5A', '#A78BFA', '#FF8C42'];
               const entries = Object.entries(player.stats || {});
-              const isOdd = entries.length % 2 !== 0;
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minHeight: 0 }}>
                   {entries.map(([key, value], i) => {
                     const c = statColors[i % statColors.length];
                     return (
                       <div key={key} style={{
-                        background: `linear-gradient(135deg, ${c}15 0%, ${c}07 100%)`,
-                        border: `1px solid ${c}25`,
-                        borderTop: `2px solid ${c}70`,
-                        borderRadius: 7,
-                        padding: '4px 6px 3px',
-                        textAlign: 'center',
+                        display: 'flex', alignItems: 'center',
+                        background: `linear-gradient(90deg, ${c}20 0%, ${c}0A 55%, transparent 100%)`,
+                        borderLeft: `3px solid ${c}`,
+                        borderRadius: '0 8px 8px 0',
+                        padding: '5px 10px 5px 9px',
+                        gap: 8,
+                        flex: 1,
                         position: 'relative', overflow: 'hidden',
-                        gridColumn: isOdd && i === 0 ? '1 / -1' : undefined,
+                        animation: 'stat-enter 0.4s cubic-bezier(0.22,1,0.36,1) both',
+                        animationDelay: `${i * 0.07}s`,
                       }}>
                         <div style={{
-                          position: 'absolute', top: -8, right: -8,
-                          width: 30, height: 30, borderRadius: '50%',
-                          background: `radial-gradient(circle, ${c}22 0%, transparent 70%)`,
+                          position: 'absolute', left: -10, top: '50%', transform: 'translateY(-50%)',
+                          width: 36, height: 36, borderRadius: '50%',
+                          background: `radial-gradient(circle, ${c}28 0%, transparent 70%)`,
                           pointerEvents: 'none',
                         }} />
-                        <div style={{
+                        <span style={{
+                          flex: 1, fontSize: 7.5, fontWeight: 800, letterSpacing: 1.8,
+                          color: `${c}90`, textTransform: 'uppercase', zIndex: 1,
+                        }}>{key}</span>
+                        <span style={{
                           fontFamily: "'Space Mono', monospace",
-                          fontSize: 13, fontWeight: 700, color: c,
-                          lineHeight: 1,
-                          textShadow: `0 0 10px ${c}55`,
-                        }}>{value}</div>
-                        <div style={{
-                          fontSize: 7, fontWeight: 800, color: 'rgba(255,255,255,0.35)',
-                          textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 2,
-                        }}>{key}</div>
+                          fontSize: 15, fontWeight: 700, color: c,
+                          textShadow: `0 0 14px ${c}65`,
+                          lineHeight: 1, zIndex: 1,
+                        }}>{value}</span>
                       </div>
                     );
                   })}
@@ -858,15 +903,19 @@ function shuffle<T>(array: T[]): T[] {
               );
             })()}
 
-            {/* Bid panel — auto height, no stretching */}
+            {/* Bid panel — flex: 1 to absorb remaining body space */}
             <div style={{
-              background: 'rgba(0,0,0,0.30)',
-              border: '1px solid rgba(0,150,220,0.18)',
+              background: 'linear-gradient(175deg, rgba(0,8,24,0.60) 0%, rgba(0,20,50,0.45) 100%)',
+              border: '1px solid rgba(0,150,220,0.25)',
+              borderTop: '1px solid rgba(0,200,255,0.30)',
               borderRadius: 10,
               padding: '6px 8px',
               textAlign: 'center',
               display: 'flex', flexDirection: 'column',
-              gap: 6,
+              flex: 1,
+              justifyContent: 'space-between',
+              minHeight: 0,
+              boxShadow: '0 4px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(0,200,255,0.08)',
             }}>
               {/* Auction intel + base price */}
               {(() => {
@@ -882,67 +931,77 @@ function shuffle<T>(array: T[]): T[] {
                   { label: 'Next Bid', value: `₹${nextBid.toLocaleString()}`, color: '#FFB547', glow: 'rgba(255,181,71,0.35)' },
                 ];
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: '1px 0' }}>
-                    {/* Base price — full width */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minHeight: 0 }}>
+                    {/* Base price strip */}
                     <div style={{
-                      gridColumn: '1 / -1',
-                      display: 'flex', justifyContent: 'center',
+                      display: 'flex', alignItems: 'center',
+                      background: 'linear-gradient(90deg, rgba(0,130,210,0.25) 0%, rgba(0,80,160,0.10) 55%, transparent 100%)',
+                      borderLeft: '3px solid rgba(0,200,255,0.90)',
+                      borderRadius: '0 8px 8px 0',
+                      padding: '4px 10px 4px 9px',
+                      gap: 8,
+                      boxShadow: '0 0 12px rgba(0,150,220,0.14)',
+                      flexShrink: 0,
                     }}>
-                      <div style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        background: 'rgba(0,120,194,0.14)',
-                        border: '1px solid rgba(0,180,255,0.28)',
-                        borderRadius: 20, padding: '3px 14px',
-                      }}>
-                        <span style={{ fontSize: 7, fontWeight: 900, letterSpacing: 2.5, color: 'rgba(0,200,255,0.55)', textTransform: 'uppercase' }}>Base Price</span>
-                        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, fontWeight: 700, color: '#00C8FF', letterSpacing: 0.5 }}>
-                          ₹{player.basePrice.toLocaleString()}
-                        </span>
-                      </div>
+                      <span style={{ flex: 1, fontSize: 7, fontWeight: 900, letterSpacing: 2, color: 'rgba(0,200,255,0.65)', textTransform: 'uppercase' }}>Base Price</span>
+                      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 700, color: '#00C8FF', letterSpacing: 0.5 }}>₹{player.basePrice.toLocaleString()}</span>
                     </div>
-                    {intelTiles.map(tile => (
-                      <div key={tile.label} style={{
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.07)',
-                        borderTop: `2px solid ${tile.color}55`,
-                        borderRadius: 7, padding: '5px 6px',
-                        textAlign: 'center',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
-                      }}>
-                        <div style={{
-                          fontFamily: "'Space Mono', monospace", fontWeight: 700,
-                          fontSize: 14, color: tile.color,
-                          textShadow: `0 0 10px ${tile.glow}`,
-                          lineHeight: 1,
-                        }}>{tile.value}</div>
-                        <div style={{ fontSize: 6.5, letterSpacing: 1.5, color: 'rgba(255,255,255,0.32)', textTransform: 'uppercase', fontWeight: 800 }}>{tile.label}</div>
-                      </div>
-                    ))}
+                    {/* Intel strips — 2 column, stretch to fill remaining intel space */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 2, flex: 1, minHeight: 0 }}>
+                      {intelTiles.map(tile => (
+                        <div key={tile.label} style={{
+                          display: 'flex', alignItems: 'center',
+                          background: `linear-gradient(90deg, ${tile.color}1A 0%, ${tile.color}08 55%, transparent 100%)`,
+                          borderLeft: `2px solid ${tile.color}CC`,
+                          borderRadius: '0 7px 7px 0',
+                          padding: '4px 7px 4px 6px',
+                          gap: 4,
+                          overflow: 'hidden',
+                        }}>
+                          <span style={{
+                            flex: 1, fontSize: 6, fontWeight: 800, letterSpacing: 1.2,
+                            color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>{tile.label}</span>
+                          <span style={{
+                            fontFamily: "'Space Mono', monospace", fontWeight: 700,
+                            fontSize: 12, color: tile.color,
+                            textShadow: `0 0 10px ${tile.glow}`, lineHeight: 1,
+                            flexShrink: 0,
+                          }}>{tile.value}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}
 
-              {/* Current bid + leader */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.06)', marginBottom: 4 }} />
-
-                <div style={{ fontSize: 7, letterSpacing: 3, color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', fontWeight: 800 }}>Current Bid</div>
+              {/* Current bid + leader — flex: 1 so it fills the bottom half of the panel */}
+              <div style={{
+                background: currentBid > 0 ? 'rgba(0,217,126,0.07)' : 'rgba(255,255,255,0.03)',
+                border: `1px solid ${currentBid > 0 ? 'rgba(0,217,126,0.25)' : 'rgba(255,255,255,0.07)'}`,
+                borderRadius: 10,
+                padding: '7px 10px 6px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+                flex: 1,
+                boxShadow: currentBid > 0 ? '0 0 18px rgba(0,217,126,0.12), inset 0 1px 0 rgba(0,217,126,0.08)' : 'none',
+              }}>
+                <div style={{ fontSize: 7, letterSpacing: 3, color: currentBid > 0 ? 'rgba(0,217,126,0.55)' : 'rgba(255,255,255,0.25)', textTransform: 'uppercase', fontWeight: 800 }}>Current Bid</div>
                 <div
                   key={currentBid}
                   ref={currentBidRef}
                   style={{
                     fontFamily: "'Space Mono', monospace",
-                    fontSize: currentBid > 0 ? '1.55rem' : '1.25rem',
+                    fontSize: currentBid > 0 ? '1.65rem' : '1.3rem',
                     fontWeight: 700,
-                    color: currentBid > 0 ? '#00D97E' : 'rgba(255,255,255,0.20)',
+                    color: currentBid > 0 ? '#00D97E' : 'rgba(255,255,255,0.18)',
                     lineHeight: 1,
-                    marginBottom: 2,
-                    textShadow: currentBid > 0 ? '0 0 22px rgba(0,217,126,0.55)' : 'none',
+                    textShadow: currentBid > 0 ? '0 0 28px rgba(0,217,126,0.65), 0 0 55px rgba(0,217,126,0.25)' : 'none',
                     animation: currentBid > 0 ? 'bid-receive 0.45s cubic-bezier(0.22,1,0.36,1) both' : undefined,
                   }}>₹{currentBid.toLocaleString()}</div>
-
-                <div style={{ fontSize: 7, letterSpacing: 3, color: 'rgba(255,255,255,0.30)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 1 }}>Leader</div>
-                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: '#00D97E', letterSpacing: 0.5 }}>
+                <div style={{ width: '40%', height: 1, background: currentBid > 0 ? 'rgba(0,217,126,0.30)' : 'rgba(255,255,255,0.07)', borderRadius: 99, margin: '1px 0' }} />
+                <div style={{ fontSize: 7, letterSpacing: 3, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', fontWeight: 800 }}>Leader</div>
+                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: '1rem', color: currentBid > 0 ? '#00D97E' : 'rgba(255,255,255,0.35)', letterSpacing: 0.5 }}>
                   {currentBidTeam ? teams.find(t => t.id === currentBidTeam)?.name : '—'}
                 </div>
               </div>
@@ -952,19 +1011,21 @@ function shuffle<T>(array: T[]): T[] {
             <div style={{ display: 'flex', gap: 7 }}>
               <button onClick={handleSold} style={{
                 flex: 1,
-                background: 'linear-gradient(135deg, #00D97E 0%, #00B868 100%)',
-                color: '#03100A', fontWeight: 900,
-                border: 'none', borderRadius: 8, padding: '11px 0', fontSize: 15, cursor: 'pointer',
-                fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 2, textTransform: 'uppercase',
-                boxShadow: '0 0 22px rgba(0,217,126,0.45), 0 4px 14px rgba(0,0,0,0.3)',
+                background: 'linear-gradient(135deg, #00F090 0%, #00D97E 45%, #00A85A 100%)',
+                color: '#012A18', fontWeight: 900,
+                border: 'none', borderRadius: 999, padding: '11px 0', fontSize: 15, cursor: 'pointer',
+                fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 2.5, textTransform: 'uppercase',
+                boxShadow: '0 0 26px rgba(0,217,126,0.55), 0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.25)',
+                transition: 'transform 0.12s, box-shadow 0.12s',
               }}>Sold</button>
               <button onClick={handleUnsold} style={{
                 flex: 1,
-                background: 'linear-gradient(135deg, #FF3D5A 0%, #D42040 100%)',
+                background: 'linear-gradient(135deg, #FF6070 0%, #FF3D5A 45%, #C4152E 100%)',
                 color: '#fff', fontWeight: 900,
-                border: 'none', borderRadius: 8, padding: '11px 0', fontSize: 15, cursor: 'pointer',
-                fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 2, textTransform: 'uppercase',
-                boxShadow: '0 0 22px rgba(255,61,90,0.45), 0 4px 14px rgba(0,0,0,0.3)',
+                border: 'none', borderRadius: 999, padding: '11px 0', fontSize: 15, cursor: 'pointer',
+                fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: 2.5, textTransform: 'uppercase',
+                boxShadow: '0 0 26px rgba(255,61,90,0.55), 0 4px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.20)',
+                transition: 'transform 0.12s, box-shadow 0.12s',
               }}>Unsold</button>
             </div>
 
