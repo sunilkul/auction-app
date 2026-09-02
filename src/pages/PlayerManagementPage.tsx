@@ -1,23 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { Player, Team } from '../types';
 import FireworksCanvas from '../components/FireworksCanvas';
-
-const BG = 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(235,242,252,0.92) 100%), url(/iStock-2163573192_web.jpg) center/cover no-repeat fixed';
+import { motion, AnimatePresence } from 'framer-motion';
+import { AuroraBackground } from '../components/ui/AuroraBackground';
+import { BackgroundBeams } from '../components/ui/BackgroundBeams';
+import { ShimmerText } from '../components/ui/ShimmerText';
+import { cn } from '../components/ui/cn';
 
 const SKILL_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  BATSMAN:          { bg: 'rgba(0,168,90,0.10)',   text: '#007A45', border: 'rgba(0,168,90,0.30)' },
-  BOWLER:           { bg: 'rgba(229,40,63,0.09)',   text: '#B51830', border: 'rgba(229,40,63,0.25)' },
-  'ALL ROUNDER':    { bg: 'rgba(215,140,0,0.10)',   text: '#8A5A00', border: 'rgba(215,140,0,0.28)' },
-  ALL_ROUNDER:      { bg: 'rgba(215,140,0,0.10)',   text: '#8A5A00', border: 'rgba(215,140,0,0.28)' },
-  'WICKET KEEPER':  { bg: 'rgba(120,50,200,0.09)',  text: '#6B30AC', border: 'rgba(120,50,200,0.25)' },
-  WK_BATSMAN:       { bg: 'rgba(120,50,200,0.09)',  text: '#6B30AC', border: 'rgba(120,50,200,0.25)' },
+  BATSMAN:          { bg: 'rgba(52,211,153,0.1)',   text: '#34d399', border: 'rgba(52,211,153,0.3)' },
+  BOWLER:           { bg: 'rgba(248,113,113,0.1)',   text: '#f87171', border: 'rgba(248,113,113,0.3)' },
+  'ALL ROUNDER':    { bg: 'rgba(245,158,11,0.1)',    text: '#f59e0b', border: 'rgba(245,158,11,0.3)' },
+  ALL_ROUNDER:      { bg: 'rgba(245,158,11,0.1)',    text: '#f59e0b', border: 'rgba(245,158,11,0.3)' },
+  'WICKET KEEPER':  { bg: 'rgba(129,140,248,0.1)',   text: '#818cf8', border: 'rgba(129,140,248,0.3)' },
+  WK_BATSMAN:       { bg: 'rgba(129,140,248,0.1)',   text: '#818cf8', border: 'rgba(129,140,248,0.3)' },
 };
 
 const STATUS_CONFIG: Record<string, { accent: string; bg: string; border: string; label: string }> = {
-  SOLD:         { accent: '#00A85A', bg: 'rgba(0,168,90,0.10)',   border: 'rgba(0,168,90,0.30)',   label: 'Sold' },
-  UNSOLD:       { accent: '#E5283F', bg: 'rgba(229,40,63,0.09)',  border: 'rgba(229,40,63,0.25)',  label: 'Unsold' },
-  NOT_ASSIGNED: { accent: '#0078C2', bg: 'rgba(0,120,194,0.10)',  border: 'rgba(0,120,194,0.28)', label: 'Not Assigned' },
-  ASSIGNED:     { accent: '#2B72D4', bg: 'rgba(43,114,212,0.09)', border: 'rgba(43,114,212,0.25)', label: 'Assigned' },
+  SOLD:         { accent: '#34d399', bg: 'rgba(52,211,153,0.08)',  border: 'rgba(52,211,153,0.25)',  label: 'Sold' },
+  UNSOLD:       { accent: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.25)', label: 'Unsold' },
+  NOT_ASSIGNED: { accent: '#38bdf8', bg: 'rgba(56,189,248,0.08)',  border: 'rgba(56,189,248,0.25)',  label: 'Not Assigned' },
+  ASSIGNED:     { accent: '#818cf8', bg: 'rgba(129,140,248,0.08)', border: 'rgba(129,140,248,0.25)', label: 'Assigned' },
 };
 
 interface Skill { id: number; skillName: string; }
@@ -46,27 +49,22 @@ const PlayerManagementPage: React.FC = () => {
     fetch('http://localhost:8282/api/teams').then(r => r.json()).then(setTeams);
   }, []);
 
-  const handleOpenSellModal = (player: Player) => {
+  const handleOpenSellModal = (player: Player) =>
     setSellModal({ player, teamId: null, price: String(player.basePrice), submitting: false, error: '' });
-  };
 
   const handleMarkUnsold = async (id: number) => {
     try {
-      await fetch(`http://localhost:8282/api/players/reset-auction?playerId=${id}`, {
-        method: 'POST',
-      });
+      await fetch(`http://localhost:8282/api/players/reset-auction?playerId=${id}`, { method: 'POST' });
       setPlayers(prev => prev.map(p =>
         p.id === id ? { ...p, status: 'NOT_ASSIGNED', soldPrice: null, teamId: null, teamName: undefined } : p
       ));
-    } catch {
-      // silently ignore
-    }
+    } catch { /* silently ignore */ }
   };
 
   const handleConfirmSold = async () => {
     if (!sellModal) return;
     const { player, teamId, price } = sellModal;
-    if (!teamId) { setSellModal(m => m ? { ...m, error: 'Please select a team.' } : m); return; }
+    if (!teamId)                          { setSellModal(m => m ? { ...m, error: 'Please select a team.' } : m); return; }
     const soldPrice = parseInt(price, 10);
     if (isNaN(soldPrice) || soldPrice <= 0) { setSellModal(m => m ? { ...m, error: 'Enter a valid price.' } : m); return; }
     setSellModal(m => m ? { ...m, submitting: true, error: '' } : m);
@@ -78,9 +76,7 @@ const PlayerManagementPage: React.FC = () => {
       });
       const soldTeam = teams.find(t => t.id === teamId);
       setPlayers(prev => prev.map(p =>
-        p.id === player.id
-          ? { ...p, status: 'SOLD', soldPrice, teamId, teamName: soldTeam?.name }
-          : p
+        p.id === player.id ? { ...p, status: 'SOLD', soldPrice, teamId, teamName: soldTeam?.name } : p
       ));
       setSellModal(null);
       setSoldAnim({ playerName: player.name, teamName: soldTeam?.name ?? '—', teamLogo: soldTeam?.logo ?? '', amount: soldPrice });
@@ -91,441 +87,350 @@ const PlayerManagementPage: React.FC = () => {
   };
 
   const filteredPlayers = players.filter(p => {
-    const statusMatch = statusFilter === 'All' || p.status === statusFilter;
-    const playerSkillId = typeof p.skillId === 'string' ? parseInt(p.skillId) : p.skillId;
-    const skillMatch = skillFilter === 0 || playerSkillId === skillFilter;
-    const nameMatch = nameSearch.trim() === '' || p.name.toLowerCase().includes(nameSearch.toLowerCase());
-    return statusMatch && skillMatch && nameMatch;
+    const statusOk = statusFilter === 'All' || p.status === statusFilter;
+    const skillId  = typeof p.skillId === 'string' ? parseInt(p.skillId) : p.skillId;
+    const skillOk  = skillFilter === 0 || skillId === skillFilter;
+    const nameOk   = !nameSearch.trim() || p.name.toLowerCase().includes(nameSearch.toLowerCase());
+    return statusOk && skillOk && nameOk;
   });
 
-  const soldCount        = players.filter(p => p.status === 'SOLD').length;
-  const unsoldCount      = players.filter(p => p.status === 'UNSOLD').length;
+  const soldCount = players.filter(p => p.status === 'SOLD').length;
+  const unsoldCount = players.filter(p => p.status === 'UNSOLD').length;
   const notAssignedCount = players.filter(p => p.status === 'NOT_ASSIGNED').length;
 
   const getSkillStyle = (skillName: string) => {
     const key = (skillName ?? '').toUpperCase().replace(/-/g, '_');
     return SKILL_COLORS[key] ?? SKILL_COLORS[skillName?.toUpperCase()]
-      ?? { bg: 'rgba(0,120,194,0.10)', text: '#006BA0', border: 'rgba(0,120,194,0.28)' };
+      ?? { bg: 'rgba(56,189,248,0.08)', text: '#38bdf8', border: 'rgba(56,189,248,0.25)' };
   };
 
-  const pillBtn = (active: boolean, accentColor: string): React.CSSProperties => ({
-    padding: '5px 14px',
-    borderRadius: 999,
-    border: `1px solid ${active ? accentColor : 'rgba(0,0,0,0.13)'}`,
-    background: active ? accentColor : 'rgba(255,255,255,0.85)',
-    color: active ? '#fff' : '#4A6080',
-    fontSize: 11, fontWeight: 700, letterSpacing: 0.8, cursor: 'pointer',
-    textTransform: 'uppercase' as const,
-    transition: 'all 0.15s',
-    boxShadow: active ? `0 0 14px ${accentColor}40` : 'none',
-    fontFamily: "'Inter', sans-serif",
-  });
-
   return (
-    <div style={{ minHeight: '100vh', background: BG, padding: '2rem 2.5rem 3rem' }}>
+    <AuroraBackground className="min-h-screen">
+      <BackgroundBeams />
 
-      {/* ── Header ───────────────────────────────────── */}
-      <div style={{ marginBottom: '1.75rem' }}>
-        <div style={{
-          fontFamily: "'Barlow Condensed', sans-serif",
-          fontSize: 'clamp(2.4rem, 5vw, 3.8rem)',
-          fontWeight: 900,
-          color: '#005A8E',
-          letterSpacing: 5,
-          textTransform: 'uppercase',
-          lineHeight: 1,
-          textShadow: '0 0 20px rgba(0,90,142,0.15), 0 2px 4px rgba(0,0,0,0.10)',
-          marginBottom: 16,
-        }}>Player Management</div>
+      <div className="relative z-10 px-6 py-10 max-w-[1400px] mx-auto">
 
-        {/* Summary pills */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {[
-            { label: 'Total',        count: players.length, accent: '#6B7FA0', bg: 'rgba(107,127,160,0.10)', border: 'rgba(107,127,160,0.25)' },
-            { label: 'Sold',         count: soldCount,       accent: '#007A45', bg: 'rgba(0,168,90,0.09)',    border: 'rgba(0,168,90,0.28)' },
-            { label: 'Not Assigned', count: notAssignedCount,accent: '#006BA0', bg: 'rgba(0,120,194,0.09)',   border: 'rgba(0,120,194,0.25)' },
-            { label: 'Unsold',       count: unsoldCount,     accent: '#B51830', bg: 'rgba(229,40,63,0.08)',   border: 'rgba(229,40,63,0.22)' },
-          ].map(item => (
-            <div key={item.label} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '5px 15px', borderRadius: 999,
-              background: item.bg, border: `1px solid ${item.border}`,
-              backdropFilter: 'blur(6px)',
-            }}>
-              <span style={{ fontSize: 20, fontWeight: 800, color: item.accent, fontFamily: "'Space Mono', monospace", lineHeight: 1 }}>
-                {item.count}
-              </span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: '#6B7FA0', letterSpacing: 1.2, textTransform: 'uppercase' }}>
-                {item.label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Filters + Search ─────────────────────────── */}
-      <div style={{
-        background: 'rgba(255,255,255,0.82)',
-        backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(43,114,212,0.12)',
-        borderRadius: 14,
-        padding: '16px 20px',
-        marginBottom: '1.5rem',
-        display: 'flex', flexDirection: 'column', gap: 14,
-        boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-      }}>
-
-        {/* Search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 9, color: '#8A9AB8', letterSpacing: 2.5, textTransform: 'uppercase', fontWeight: 700, minWidth: 36 }}>Search</span>
-          <div style={{ position: 'relative', flex: 1, maxWidth: 340 }}>
-            <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', opacity: 0.4 }}
-              width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#005A8E" strokeWidth="2.5">
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input
-              type="text"
-              placeholder="Search by player name…"
-              value={nameSearch}
-              onChange={e => setNameSearch(e.target.value)}
-              style={{
-                width: '100%', padding: '7px 12px 7px 32px',
-                borderRadius: 999,
-                border: '1.5px solid rgba(0,90,142,0.20)',
-                background: 'rgba(255,255,255,0.9)',
-                fontSize: 12, color: '#0D1E3E', fontFamily: "'Inter', sans-serif",
-                outline: 'none', boxSizing: 'border-box',
-                transition: 'border-color 0.15s, box-shadow 0.15s',
-                boxShadow: nameSearch ? '0 0 0 3px rgba(0,120,194,0.12)' : 'none',
-              }}
-              onFocus={e => { e.target.style.borderColor = '#0078C2'; e.target.style.boxShadow = '0 0 0 3px rgba(0,120,194,0.12)'; }}
-              onBlur={e => { e.target.style.borderColor = 'rgba(0,90,142,0.20)'; e.target.style.boxShadow = nameSearch ? '0 0 0 3px rgba(0,120,194,0.12)' : 'none'; }}
-            />
-            {nameSearch && (
-              <button
-                onClick={() => setNameSearch('')}
-                style={{
-                  position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                  color: '#8A9AB8', fontSize: 14, lineHeight: 1,
-                }}
-              >✕</button>
-            )}
-          </div>
-        </div>
-
-        {/* Skill filter */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: 9, color: '#8A9AB8', letterSpacing: 2.5, textTransform: 'uppercase', fontWeight: 700, minWidth: 36 }}>Skill</span>
-          {[{ id: 0, skillName: 'All' }, ...skills].map(skill => (
-            <button key={skill.id} onClick={() => setSkillFilter(skill.id)}
-              style={pillBtn(skillFilter === skill.id, '#0078C2')}>
-              {skill.skillName}
-            </button>
-          ))}
-        </div>
-
-        {/* Status filter */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ fontSize: 9, color: '#8A9AB8', letterSpacing: 2.5, textTransform: 'uppercase', fontWeight: 700, minWidth: 36 }}>Status</span>
-          {([
-            { value: 'All',          label: 'All',          accent: '#6B7FA0' },
-            { value: 'SOLD',         label: 'Sold',         accent: '#00A85A' },
-            { value: 'UNSOLD',       label: 'Unsold',       accent: '#E5283F' },
-            { value: 'ASSIGNED',     label: 'Assigned',     accent: '#2B72D4' },
-            { value: 'NOT_ASSIGNED', label: 'Not Assigned', accent: '#0078C2' },
-          ] as const).map(opt => (
-            <button key={opt.value} onClick={() => setStatusFilter(opt.value)}
-              style={pillBtn(statusFilter === opt.value, opt.accent)}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Sell Modal ───────────────────────────────── */}
-      {sellModal && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, zIndex: 2000,
-            background: 'rgba(4,8,20,0.60)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '1rem',
-          }}
-          onClick={e => { if (e.target === e.currentTarget) setSellModal(null); }}
+        {/* ── Header ── */}
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: -24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div style={{
-            background: 'rgba(255,255,255,0.97)',
-            borderRadius: 18,
-            padding: '28px 28px 24px',
-            width: '100%', maxWidth: 420,
-            boxShadow: '0 20px 60px rgba(0,0,0,0.25), 0 4px 20px rgba(0,0,0,0.12)',
-            border: '1px solid rgba(43,114,212,0.14)',
-          }}>
-            {/* Header */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{
-                fontSize: 9, fontWeight: 800, letterSpacing: 3,
-                color: '#8A9AB8', textTransform: 'uppercase', marginBottom: 6,
-              }}>Mark as Sold</div>
-              <div style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                fontSize: '1.6rem', fontWeight: 900, color: '#0D1E3E',
-                letterSpacing: 1, textTransform: 'uppercase', lineHeight: 1,
-              }}>{sellModal.player.name}</div>
-              <div style={{ fontSize: 11, color: '#6B7FA0', marginTop: 4 }}>
-                Base price: <span style={{ fontFamily: "'Space Mono', monospace", fontWeight: 700, color: '#005A8E' }}>₹{sellModal.player.basePrice.toLocaleString()}</span>
-              </div>
+          <h1
+            className="font-display font-black uppercase tracking-[0.1em] leading-none mb-5"
+            style={{ fontSize: 'clamp(2.4rem, 5vw, 4rem)' }}
+          >
+            <ShimmerText>Player Management</ShimmerText>
+          </h1>
+
+          {/* Summary pills */}
+          <div className="flex gap-3 flex-wrap">
+            {[
+              { label: 'Total',        count: players.length,     color: '#94a3b8' },
+              { label: 'Sold',         count: soldCount,          color: '#34d399' },
+              { label: 'Not Assigned', count: notAssignedCount,   color: '#38bdf8' },
+              { label: 'Unsold',       count: unsoldCount,        color: '#f87171' },
+            ].map((s, i) => (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.08 + 0.2 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full"
+                style={{ background: `${s.color}10`, border: `1px solid ${s.color}25` }}
+              >
+                <span className="font-mono font-black text-xl leading-none" style={{ color: s.color }}>{s.count}</span>
+                <span className="text-[0.6rem] font-bold tracking-widest uppercase" style={{ color: '#64748b' }}>{s.label}</span>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ── Filters ── */}
+        <motion.div
+          className="rounded-2xl p-5 mb-6 space-y-4"
+          style={{ background: 'rgba(30,41,59,0.6)', border: '1px solid rgba(148,163,184,0.08)', backdropFilter: 'blur(16px)' }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.5 }}
+        >
+          {/* Search */}
+          <div className="flex items-center gap-3">
+            <span className="text-[0.6rem] text-slate-500 tracking-[0.25em] uppercase font-bold min-w-[40px]">Search</span>
+            <div className="relative flex-1 max-w-xs">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 opacity-40" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2.5">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input
+                type="text"
+                placeholder="Search player…"
+                value={nameSearch}
+                onChange={e => setNameSearch(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 rounded-xl text-sm text-slate-100 outline-none transition-all"
+                style={{
+                  background: 'rgba(15,23,42,0.6)',
+                  border: '1px solid rgba(148,163,184,0.15)',
+                }}
+              />
+              {nameSearch && (
+                <button onClick={() => setNameSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs transition-colors">
+                  ✕
+                </button>
+              )}
             </div>
+          </div>
 
-            {/* Divider */}
-            <div style={{ height: 1, background: 'rgba(0,0,0,0.07)', marginBottom: 20 }} />
+          {/* Skill filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[0.6rem] text-slate-500 tracking-[0.25em] uppercase font-bold min-w-[40px]">Skill</span>
+            {[{ id: 0, skillName: 'All' }, ...skills].map(s => (
+              <FilterPill key={s.id} active={skillFilter === s.id} color="#38bdf8" onClick={() => setSkillFilter(s.id)}>
+                {s.skillName}
+              </FilterPill>
+            ))}
+          </div>
 
-            {/* Team select */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{
-                display: 'block', fontSize: 9, fontWeight: 800,
-                letterSpacing: 2.5, textTransform: 'uppercase',
-                color: '#8A9AB8', marginBottom: 8,
-              }}>Select Team</label>
+          {/* Status filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[0.6rem] text-slate-500 tracking-[0.25em] uppercase font-bold min-w-[40px]">Status</span>
+            {([
+              { value: 'All',          label: 'All',          color: '#94a3b8' },
+              { value: 'SOLD',         label: 'Sold',         color: '#34d399' },
+              { value: 'UNSOLD',       label: 'Unsold',       color: '#f87171' },
+              { value: 'ASSIGNED',     label: 'Assigned',     color: '#818cf8' },
+              { value: 'NOT_ASSIGNED', label: 'Not Assigned', color: '#38bdf8' },
+            ] as const).map(opt => (
+              <FilterPill key={opt.value} active={statusFilter === opt.value} color={opt.color} onClick={() => setStatusFilter(opt.value)}>
+                {opt.label}
+              </FilterPill>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* ── Count ── */}
+        <div className="text-[0.65rem] text-slate-500 font-mono uppercase tracking-widest mb-3">
+          {filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''} shown
+        </div>
+
+        {/* ── Table ── */}
+        {filteredPlayers.length > 0 ? (
+          <motion.div
+            className="rounded-2xl overflow-hidden"
+            style={{ border: '1px solid rgba(148,163,184,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25, duration: 0.5 }}
+          >
+            <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: 'linear-gradient(90deg, rgba(15,23,42,0.98), rgba(30,41,59,0.98))', borderBottom: '1px solid rgba(245,158,11,0.15)' }}>
+                  {['#', 'Player', 'Skill', 'Status', 'Base', 'Sold', 'Team', 'Action'].map(col => (
+                    <th key={col}
+                      className="py-3 px-4 text-left text-[0.6rem] font-mono font-bold tracking-[0.2em] uppercase text-slate-500 whitespace-nowrap"
+                      style={{ textAlign: col === '#' ? 'center' : 'left' }}
+                    >
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPlayers.map((p, idx) => {
+                  const sc        = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.NOT_ASSIGNED;
+                  const skillName = skills.find(s => s.id === Number(p.skillId))?.skillName ?? p.skillName ?? '—';
+                  const skillSt   = getSkillStyle(skillName);
+                  return (
+                    <PlayerRow
+                      key={p.id}
+                      index={idx + 1}
+                      player={p}
+                      statusCfg={sc}
+                      skillName={skillName}
+                      skillStyle={skillSt}
+                      isEven={idx % 2 === 0}
+                      onMarkSold={handleOpenSellModal}
+                      onMarkUnsold={handleMarkUnsold}
+                    />
+                  );
+                })}
+              </tbody>
+            </table>
+          </motion.div>
+        ) : (
+          <div className="text-center text-slate-500 font-mono text-sm py-20 tracking-widest uppercase">
+            No players match the filters.
+          </div>
+        )}
+      </div>
+
+      {/* ── Sell Modal ── */}
+      <AnimatePresence>
+        {sellModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={e => { if (e.target === e.currentTarget) setSellModal(null); }}
+          >
+            <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" />
+            <motion.div
+              className="relative w-full max-w-md rounded-2xl p-7"
+              style={{
+                background: 'rgba(15,23,42,0.98)',
+                border: '1px solid rgba(52,211,153,0.25)',
+                boxShadow: '0 25px 80px rgba(0,0,0,0.7), 0 0 40px rgba(52,211,153,0.05)',
+              }}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="h-0.5 rounded-t-2xl absolute top-0 left-0 right-0" style={{ background: 'linear-gradient(90deg, transparent, #34d399, transparent)' }} />
+
+              <div className="text-[0.6rem] text-slate-500 tracking-[0.3em] uppercase font-mono mb-1">Mark as Sold</div>
+              <div className="font-display font-black text-2xl text-slate-100 uppercase tracking-widest leading-none mb-1">
+                {sellModal.player.name}
+              </div>
+              <div className="text-slate-500 text-xs mb-5">
+                Base price: <span className="font-mono font-bold text-amber-400">₹{sellModal.player.basePrice.toLocaleString()}</span>
+              </div>
+
+              <div className="h-px bg-white/5 mb-5" />
+
+              {/* Team select */}
+              <label className="block text-[0.6rem] text-slate-500 tracking-[0.25em] uppercase font-mono mb-2">Select Team</label>
               <select
                 value={sellModal.teamId ?? ''}
                 onChange={e => setSellModal(m => m ? { ...m, teamId: Number(e.target.value) || null, error: '' } : m)}
-                style={{
-                  width: '100%', padding: '10px 14px',
-                  borderRadius: 10,
-                  border: sellModal.teamId
-                    ? '1.5px solid rgba(0,120,194,0.45)'
-                    : '1.5px solid rgba(43,114,212,0.20)',
-                  background: sellModal.teamId ? 'rgba(0,120,194,0.06)' : 'rgba(255,255,255,0.9)',
-                  color: sellModal.teamId ? '#005A8E' : '#8A9AB8',
-                  fontSize: 13, fontWeight: 700,
-                  fontFamily: "'Inter', sans-serif",
-                  outline: 'none', cursor: 'pointer',
-                  appearance: 'none',
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238A9AB8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 14px center',
-                  paddingRight: 36,
-                }}
+                className="w-full px-4 py-2.5 rounded-xl mb-4 text-sm font-semibold text-slate-100 outline-none"
+                style={{ background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(148,163,184,0.15)' }}
               >
                 <option value="">— Choose a team —</option>
-                {teams.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
+                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
-            </div>
 
-            {/* Price input */}
-            <div style={{ marginBottom: 22 }}>
-              <label style={{
-                display: 'block', fontSize: 9, fontWeight: 800,
-                letterSpacing: 2.5, textTransform: 'uppercase',
-                color: '#8A9AB8', marginBottom: 8,
-              }}>Sold Price (₹)</label>
-              <div style={{ position: 'relative' }}>
-                <span style={{
-                  position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)',
-                  fontFamily: "'Space Mono', monospace", fontSize: 14, color: '#005A8E', fontWeight: 700,
-                }}>₹</span>
+              {/* Price input */}
+              <label className="block text-[0.6rem] text-slate-500 tracking-[0.25em] uppercase font-mono mb-2">Sold Price</label>
+              <div className="relative mb-5">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono font-bold text-amber-400">₹</span>
                 <input
-                  type="number"
-                  min={1}
+                  type="number" min={1}
                   value={sellModal.price}
                   onChange={e => setSellModal(m => m ? { ...m, price: e.target.value, error: '' } : m)}
-                  style={{
-                    width: '100%', padding: '10px 14px 10px 30px',
-                    borderRadius: 10,
-                    border: '1.5px solid rgba(43,114,212,0.20)',
-                    background: 'rgba(255,255,255,0.9)',
-                    fontSize: 14, fontWeight: 700,
-                    fontFamily: "'Space Mono', monospace",
-                    color: '#005A8E', outline: 'none', boxSizing: 'border-box',
-                  }}
-                  onFocus={e => { e.target.style.borderColor = '#0078C2'; e.target.style.boxShadow = '0 0 0 3px rgba(0,120,194,0.12)'; }}
-                  onBlur={e => { e.target.style.borderColor = 'rgba(43,114,212,0.20)'; e.target.style.boxShadow = 'none'; }}
+                  className="w-full pl-8 pr-4 py-2.5 rounded-xl text-sm font-mono font-bold text-amber-400 outline-none"
+                  style={{ background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(148,163,184,0.15)' }}
                 />
               </div>
-            </div>
 
-            {/* Error */}
-            {sellModal.error && (
-              <div style={{ color: '#E5283F', fontSize: 11, fontWeight: 700, marginBottom: 14, textAlign: 'center' }}>
-                {sellModal.error}
+              {sellModal.error && (
+                <div className="text-rose-400 text-xs font-bold text-center mb-4">{sellModal.error}</div>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={() => setSellModal(null)} disabled={sellModal.submitting}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-display font-black tracking-widest uppercase text-slate-400 transition-all hover:text-slate-100"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                >
+                  Cancel
+                </button>
+                <button onClick={handleConfirmSold} disabled={sellModal.submitting}
+                  className="flex-[2] py-2.5 rounded-xl text-sm font-display font-black tracking-widest uppercase text-black transition-all"
+                  style={{
+                    background: sellModal.submitting ? 'rgba(52,211,153,0.4)' : '#34d399',
+                    boxShadow: sellModal.submitting ? 'none' : '0 0 20px rgba(52,211,153,0.4)',
+                    cursor: sellModal.submitting ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {sellModal.submitting ? 'Saving…' : 'Confirm Sale ✓'}
+                </button>
               </div>
-            )}
-
-            {/* Buttons */}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setSellModal(null)}
-                disabled={sellModal.submitting}
-                style={{
-                  flex: 1, padding: '11px 0', borderRadius: 10,
-                  border: '1.5px solid rgba(43,114,212,0.18)',
-                  background: 'rgba(255,255,255,0.9)', color: '#6B7FA0',
-                  fontSize: 13, fontWeight: 800, letterSpacing: 1.5,
-                  textTransform: 'uppercase', cursor: 'pointer',
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  transition: 'all 0.15s',
-                }}
-              >Cancel</button>
-              <button
-                onClick={handleConfirmSold}
-                disabled={sellModal.submitting}
-                style={{
-                  flex: 2, padding: '11px 0', borderRadius: 10,
-                  border: 'none',
-                  background: sellModal.submitting ? 'rgba(0,168,90,0.35)' : '#00A85A',
-                  color: '#fff',
-                  fontSize: 13, fontWeight: 800, letterSpacing: 1.5,
-                  textTransform: 'uppercase',
-                  cursor: sellModal.submitting ? 'not-allowed' : 'pointer',
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  boxShadow: sellModal.submitting ? 'none' : '0 0 18px rgba(0,168,90,0.40)',
-                  transition: 'all 0.15s',
-                }}
-              >{sellModal.submitting ? 'Saving…' : 'Confirm Sale'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Player count ─────────────────────────────── */}
-      <div style={{ fontSize: 11, color: '#8A9AB8', letterSpacing: 2, marginBottom: '1rem', textTransform: 'uppercase', fontWeight: 600 }}>
-        {filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''} shown
-      </div>
-
-      {/* ── Table ────────────────────────────────────── */}
-      {filteredPlayers.length > 0 ? (
-        <div style={{
-          background: 'rgba(255,255,255,0.88)',
-          backdropFilter: 'blur(14px)',
-          border: '1px solid rgba(43,114,212,0.12)',
-          borderRadius: 16,
-          overflow: 'hidden',
-          boxShadow: '0 8px 40px rgba(0,0,0,0.10)',
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{
-                background: 'linear-gradient(90deg, #003D6B 0%, #005A8E 50%, #0078C2 100%)',
-              }}>
-                {['#', 'Player', 'Skill', 'Status', 'Base Price', 'Sold Price', 'Team', 'Action'].map(col => (
-                  <th key={col} style={{
-                    padding: col === '#' ? '14px 10px 14px 20px' : '14px 16px',
-                    textAlign: col === '#' ? 'center' : 'left',
-                    fontSize: 9,
-                    fontWeight: 800,
-                    letterSpacing: 2,
-                    textTransform: 'uppercase',
-                    color: 'rgba(255,255,255,0.75)',
-                    fontFamily: "'Inter', sans-serif",
-                    borderBottom: '1px solid rgba(255,255,255,0.10)',
-                    whiteSpace: 'nowrap',
-                  }}>{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredPlayers.map((p, idx) => {
-                const sc        = STATUS_CONFIG[p.status] ?? STATUS_CONFIG.NOT_ASSIGNED;
-                const skillName = skills.find(s => s.id === Number(p.skillId))?.skillName ?? p.skillName ?? '—';
-                const skillSt   = getSkillStyle(skillName);
-                return (
-                  <PlayerRow
-                    key={p.id}
-                    index={idx + 1}
-                    player={p}
-                    statusCfg={sc}
-                    skillName={skillName}
-                    skillStyle={skillSt}
-                    isEven={idx % 2 === 0}
-                    onMarkSold={handleOpenSellModal}
-                    onMarkUnsold={handleMarkUnsold}
-                  />
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div style={{ textAlign: 'center', padding: '64px 0', color: '#8A9AB8', fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase' }}>
-          No players match the selected filters.
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── SOLD animation overlay ── */}
       {soldAnim && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 3000,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(4,8,15,0.82)',
+          background: 'rgba(2,6,23,0.90)',
           animation: 'sold-backdrop 3.2s ease-in-out forwards',
-          backdropFilter: 'blur(6px)',
+          backdropFilter: 'blur(8px)',
         }}>
           <FireworksCanvas />
           <div style={{ textAlign: 'center', animation: 'sold-card 3.2s ease-in-out forwards' }}>
             <div style={{
-              fontFamily: "'Bebas Neue', sans-serif",
+              fontFamily: "'Barlow Condensed', sans-serif",
               fontSize: 'clamp(5rem, 12vw, 9rem)',
-              letterSpacing: 12, lineHeight: 1, color: '#00D97E',
-              textShadow: '0 0 40px rgba(0,217,126,0.8), 0 0 80px rgba(0,217,126,0.4)',
+              fontWeight: 900,
+              letterSpacing: 12, lineHeight: 1, color: '#34d399',
+              textShadow: '0 0 40px rgba(52,211,153,0.8), 0 0 80px rgba(52,211,153,0.4)',
               animation: 'sold-badge 0.6s cubic-bezier(0.22,1,0.36,1) 0.1s both',
             }}>SOLD!</div>
-
-            <div style={{ width: 80, height: 2, background: 'rgba(0,217,126,0.4)', borderRadius: 99, margin: '10px auto 18px' }} />
-
+            <div style={{ width: 80, height: 2, background: 'rgba(52,211,153,0.4)', borderRadius: 99, margin: '10px auto 18px' }} />
             <div style={{
               fontFamily: "'Barlow Condensed', sans-serif",
               fontSize: 'clamp(1.4rem, 3vw, 2rem)', fontWeight: 900,
-              letterSpacing: 4, textTransform: 'uppercase', color: '#FFFFFF', marginBottom: 6,
+              letterSpacing: 4, textTransform: 'uppercase', color: '#f8fafc', marginBottom: 6,
               animation: 'sold-fade-up 0.5s ease-out 0.4s both',
             }}>{soldAnim.playerName}</div>
-
             <div style={{
               fontSize: 11, fontWeight: 700, letterSpacing: 3,
-              textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 14,
+              textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)', marginBottom: 14,
               animation: 'sold-fade-up 0.5s ease-out 0.55s both',
             }}>sold to</div>
-
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14,
-              animation: 'sold-fade-up 0.5s ease-out 0.65s both',
-            }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, animation: 'sold-fade-up 0.5s ease-out 0.65s both' }}>
               {soldAnim.teamLogo && (
                 <img src={soldAnim.teamLogo} alt={soldAnim.teamName} style={{
                   width: 64, height: 64, objectFit: 'contain', borderRadius: '50%',
-                  border: '2px solid rgba(0,120,194,0.6)',
-                  boxShadow: '0 0 24px rgba(0,120,194,0.5)',
-                  background: 'rgba(255,255,255,0.08)', padding: 4,
+                  border: '2px solid rgba(245,158,11,0.6)',
+                  boxShadow: '0 0 24px rgba(245,158,11,0.5)',
+                  background: 'rgba(255,255,255,0.06)', padding: 4,
                 }} />
               )}
               <div style={{
-                fontFamily: "'Bebas Neue', sans-serif",
-                fontSize: 'clamp(1.8rem, 4vw, 2.8rem)',
-                letterSpacing: 5, color: '#FFD700',
-                textShadow: '0 0 28px rgba(255,215,0,0.85), 0 0 60px rgba(255,215,0,0.4)',
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 900,
+                letterSpacing: 5, color: '#f59e0b',
+                textShadow: '0 0 28px rgba(245,158,11,0.85), 0 0 60px rgba(245,158,11,0.4)',
                 textTransform: 'uppercase',
               }}>{soldAnim.teamName}</div>
             </div>
-
             <div style={{
               fontFamily: "'Space Mono', monospace",
-              fontSize: 'clamp(1.2rem, 2.5vw, 1.8rem)', fontWeight: 700, color: '#00D97E',
+              fontSize: 'clamp(1.2rem, 2.5vw, 1.8rem)', fontWeight: 700, color: '#34d399',
               marginTop: 18, animation: 'sold-fade-up 0.5s ease-out 0.8s both',
             }}>₹{soldAnim.amount.toLocaleString()}</div>
           </div>
         </div>
       )}
-    </div>
+    </AuroraBackground>
   );
 };
 
-/* ── Player Row ───────────────────────────────────── */
-interface StatusCfg { accent: string; bg: string; border: string; label: string; }
+/* ── Filter Pill ── */
+const FilterPill: React.FC<{ active: boolean; color: string; onClick: () => void; children: React.ReactNode }> = ({ active, color, onClick, children }) => (
+  <button
+    onClick={onClick}
+    className="px-3 py-1 rounded-full text-[0.65rem] font-bold tracking-widest uppercase transition-all duration-200 cursor-pointer"
+    style={{
+      background: active ? `${color}20` : 'rgba(255,255,255,0.03)',
+      border: `1px solid ${active ? color + '50' : 'rgba(255,255,255,0.08)'}`,
+      color: active ? color : '#64748b',
+      boxShadow: active ? `0 0 12px ${color}30` : 'none',
+    }}
+  >
+    {children}
+  </button>
+);
 
+/* ── Player Row ── */
+interface StatusCfg { accent: string; bg: string; border: string; label: string; }
 interface RowProps {
   index: number;
   player: Player;
@@ -538,153 +443,113 @@ interface RowProps {
 }
 
 const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillName, skillStyle, isEven, onMarkSold, onMarkUnsold }) => {
-  const [hovered, setHovered] = useState(false);
-  const [btnHov, setBtnHov]   = useState(false);
+  const [hov, setHov] = useState(false);
   const isSold = p.status === 'SOLD';
-  const btnAccent = isSold ? '#E5283F' : '#00A85A';
-
-  const rowBg = hovered
-    ? `linear-gradient(90deg, ${sc.accent}12 0%, rgba(235,244,255,0.95) 100%)`
-    : isEven ? 'rgba(248,251,255,0.9)' : 'rgba(255,255,255,0.95)';
-
-  const tdStyle = (extra?: React.CSSProperties): React.CSSProperties => ({
-    padding: '12px 16px',
-    verticalAlign: 'middle',
-    borderBottom: '1px solid rgba(43,114,212,0.07)',
-    transition: 'background 0.18s',
-    ...extra,
-  });
+  const btnColor = isSold ? '#f87171' : '#34d399';
 
   return (
     <tr
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{ background: rowBg, transition: 'background 0.18s' }}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        background: hov
+          ? `rgba(30,41,59,0.7)`
+          : isEven ? 'rgba(15,23,42,0.5)' : 'rgba(15,23,42,0.3)',
+        borderBottom: '1px solid rgba(148,163,184,0.05)',
+        transition: 'background 0.15s',
+      }}
     >
       {/* # */}
-      <td style={tdStyle({ padding: '12px 10px 12px 20px', textAlign: 'center', width: 40 })}>
-        <div style={{
-          width: 26, height: 26, borderRadius: '50%',
-          background: hovered ? sc.accent : 'rgba(0,90,142,0.08)',
-          color: hovered ? '#fff' : '#6B7FA0',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 10, fontWeight: 800, fontFamily: "'Space Mono', monospace",
-          transition: 'all 0.18s', margin: '0 auto',
-        }}>{index}</div>
+      <td className="py-3 px-4 text-center">
+        <div
+          className="w-6 h-6 rounded-full flex items-center justify-center text-[0.6rem] font-mono font-black mx-auto transition-all duration-150"
+          style={{
+            background: hov ? sc.accent : 'rgba(255,255,255,0.05)',
+            color: hov ? '#020617' : '#475569',
+          }}
+        >
+          {index}
+        </div>
       </td>
 
       {/* Player */}
-      <td style={tdStyle({ minWidth: 200 })}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <img
-              src={p.photo} alt={p.name}
-              style={{
-                width: 40, height: 40, borderRadius: '50%', objectFit: 'cover',
-                border: `2px solid ${sc.accent}45`,
-                boxShadow: `0 0 10px ${sc.accent}25, 0 2px 6px rgba(0,0,0,0.10)`,
-                transition: 'box-shadow 0.18s',
-              }}
+      <td className="py-3 px-4">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-shrink-0">
+            <img src={p.photo} alt={p.name}
+              className="w-9 h-9 rounded-full object-cover"
+              style={{ border: `1.5px solid ${sc.accent}40`, boxShadow: `0 0 10px ${sc.accent}20` }}
             />
             {p.isNewPlayer === 1 && (
-              <div style={{
-                position: 'absolute', bottom: -2, right: -2,
-                background: '#FFB800', color: '#000',
-                fontSize: 6, fontWeight: 900, borderRadius: 999,
-                padding: '1px 4px', letterSpacing: 0.6, textTransform: 'uppercase',
-                border: '1.5px solid rgba(255,255,255,0.9)', lineHeight: 1.5,
-              }}>NEW</div>
+              <div className="absolute -bottom-1 -right-1 bg-amber-400 text-black text-[6px] font-black rounded-full px-1 py-0.5 uppercase tracking-wider leading-none"
+                style={{ border: '1.5px solid rgba(2,6,23,0.8)' }}>
+                NEW
+              </div>
             )}
           </div>
           <div>
-            <div style={{
-              fontSize: 13, fontWeight: 700, color: '#0D1E3E',
-              fontFamily: "'Inter', sans-serif", whiteSpace: 'nowrap',
-            }}>{p.name}</div>
-            {p.groupCode && (
-              <div style={{ fontSize: 10, color: '#8A9AB8', fontWeight: 600, marginTop: 1 }}>{p.groupCode}</div>
-            )}
+            <div className="text-sm font-semibold text-slate-200 whitespace-nowrap">{p.name}</div>
+            {p.groupCode && <div className="text-[0.6rem] text-slate-600 font-mono mt-0.5">{p.groupCode}</div>}
           </div>
         </div>
       </td>
 
       {/* Skill */}
-      <td style={tdStyle()}>
-        <span style={{
-          fontSize: 10, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase',
-          padding: '3px 10px', borderRadius: 999,
-          background: skillStyle.bg, color: skillStyle.text, border: `1px solid ${skillStyle.border}`,
-          whiteSpace: 'nowrap',
-        }}>{skillName}</span>
+      <td className="py-3 px-4">
+        <span className="text-[0.6rem] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full whitespace-nowrap"
+          style={{ background: skillStyle.bg, color: skillStyle.text, border: `1px solid ${skillStyle.border}` }}>
+          {skillName}
+        </span>
       </td>
 
       {/* Status */}
-      <td style={tdStyle()}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{
-            width: 7, height: 7, borderRadius: '50%',
-            background: sc.accent,
-            boxShadow: `0 0 6px ${sc.accent}80`,
-          }} />
-          <span style={{
-            fontSize: 10, fontWeight: 800, letterSpacing: 0.8, textTransform: 'uppercase',
-            color: sc.accent, whiteSpace: 'nowrap',
-          }}>{sc.label}</span>
+      <td className="py-3 px-4">
+        <div className="flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: sc.accent, boxShadow: `0 0 6px ${sc.accent}` }} />
+          <span className="text-[0.6rem] font-bold tracking-wider uppercase whitespace-nowrap" style={{ color: sc.accent }}>
+            {sc.label}
+          </span>
         </div>
       </td>
 
       {/* Base Price */}
-      <td style={tdStyle()}>
-        <span style={{ fontSize: 13, fontWeight: 700, color: '#005A8E', fontFamily: "'Space Mono', monospace" }}>
-          ₹{p.basePrice.toLocaleString()}
-        </span>
+      <td className="py-3 px-4">
+        <span className="font-mono text-xs font-bold text-slate-400">₹{p.basePrice.toLocaleString()}</span>
       </td>
 
       {/* Sold Price */}
-      <td style={tdStyle()}>
+      <td className="py-3 px-4">
         {p.soldPrice ? (
-          <span style={{
-            fontSize: 13, fontWeight: 700, fontFamily: "'Space Mono', monospace",
-            color: sc.accent,
-            background: sc.bg, border: `1px solid ${sc.border}`,
-            padding: '2px 8px', borderRadius: 6,
-          }}>₹{p.soldPrice.toLocaleString()}</span>
+          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded"
+            style={{ background: sc.bg, color: sc.accent, border: `1px solid ${sc.border}` }}>
+            ₹{p.soldPrice.toLocaleString()}
+          </span>
         ) : (
-          <span style={{ color: '#C0CCDB', fontFamily: "'Space Mono', monospace", fontSize: 13 }}>—</span>
+          <span className="font-mono text-xs text-slate-700">—</span>
         )}
       </td>
 
       {/* Team */}
-      <td style={tdStyle({ minWidth: 130 })}>
-        {p.teamName ? (
-          <span style={{
-            fontSize: 11, fontWeight: 700, color: sc.accent,
-            letterSpacing: 0.5, textTransform: 'uppercase',
-          }}>{p.teamName}</span>
-        ) : (
-          <span style={{ color: '#C0CCDB', fontSize: 11 }}>—</span>
-        )}
+      <td className="py-3 px-4">
+        {p.teamName
+          ? <span className="text-xs font-semibold uppercase tracking-wider whitespace-nowrap" style={{ color: sc.accent }}>{p.teamName}</span>
+          : <span className="text-slate-700 text-xs">—</span>
+        }
       </td>
 
       {/* Action */}
-      <td style={tdStyle({ padding: '12px 20px 12px 12px' })}>
+      <td className="py-3 px-4">
         <button
           onClick={() => isSold ? onMarkUnsold(p.id) : onMarkSold(p)}
-          onMouseEnter={() => setBtnHov(true)}
-          onMouseLeave={() => setBtnHov(false)}
+          className="px-3 py-1.5 rounded-lg text-[0.65rem] font-bold tracking-widest uppercase transition-all duration-150 whitespace-nowrap"
           style={{
-            padding: '6px 14px', borderRadius: 8,
-            background: btnHov ? btnAccent : 'rgba(255,255,255,0.85)',
-            color: btnHov ? '#fff' : btnAccent,
-            border: `1px solid ${btnAccent}55`,
-            cursor: 'pointer', fontSize: 10, fontWeight: 800,
-            letterSpacing: 1.2, textTransform: 'uppercase',
-            transition: 'all 0.15s', whiteSpace: 'nowrap',
-            boxShadow: btnHov ? `0 0 14px ${btnAccent}35` : 'inset 0 1px 0 rgba(255,255,255,0.9)',
-            fontFamily: "'Inter', sans-serif",
+            background: hov ? `${btnColor}20` : 'rgba(255,255,255,0.04)',
+            color: hov ? btnColor : '#475569',
+            border: `1px solid ${hov ? btnColor + '40' : 'rgba(255,255,255,0.06)'}`,
+            boxShadow: hov ? `0 0 12px ${btnColor}25` : 'none',
           }}
         >
-          {isSold ? 'Mark Unsold' : 'Mark Sold'}
+          {isSold ? '↩ Unsold' : '✓ Sell'}
         </button>
       </td>
     </tr>

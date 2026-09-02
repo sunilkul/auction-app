@@ -1,217 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Google Fonts ───────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
+
+/* ── CSS Variables ──────────────────────────────── */
 :root {
-  --bg-void:      #EEF2FA;
-  --bg-base:      #F4F7FD;
-  --bg-surface:   #FFFFFF;
-  --bg-card:      #FFFFFF;
-  --bg-elevated:  #EEF3FB;
-  --gold:         #0078C2;
-  --gold-dark:    #005A8E;
-  --gold-glow:    rgba(0, 120, 194, 0.18);
-  --gold-dim:     rgba(0, 120, 194, 0.10);
-  --green:        #00A85A;
-  --green-glow:   rgba(0, 168, 90, 0.18);
-  --red:          #E5283F;
-  --red-glow:     rgba(229, 40, 63, 0.18);
-  --blue:         #2B72D4;
-  --text-bright:  #0A1628;
-  --text-primary: #1A3362;
-  --text-muted:   #6B7FA0;
-  --border:       rgba(0, 0, 0, 0.08);
-  --border-mid:   rgba(0, 0, 0, 0.12);
-  --font-display: 'Barlow Condensed', sans-serif;
-  --font-body:    'Inter', system-ui, sans-serif;
-  --font-data:    'Space Mono', monospace;
-  --radius-sm:    6px;
-  --radius-md:    12px;
-  --radius-lg:    18px;
+  --gold:       #f59e0b;
+  --gold-dim:   rgba(245,158,11,0.15);
+  --gold-glow:  rgba(245,158,11,0.4);
+  --sky:        #38bdf8;
+  --emerald:    #34d399;
+  --rose:       #f87171;
+  --violet:     #818cf8;
+  --surface:    #0f172a;
+  --card:       #1e293b;
+  --void:       #020617;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 
+html { color-scheme: dark; }
+
 body {
   margin: 0;
-  font-family: var(--font-body);
-  background: var(--bg-base);
-  color: var(--text-primary);
+  background: var(--void);
+  color: #f8fafc;
+  font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── NAV ──────────────────────────────────────── */
-.app-nav {
-  position: sticky;
-  top: 0;
-  z-index: 200;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 56px;
-  padding: 0 28px;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border-mid);
-}
+/* ── SCROLLBAR ──────────────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-.app-nav::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--gold), transparent);
-  opacity: 0.55;
-}
+/* ── TYPOGRAPHY ─────────────────────────────────── */
+.font-display { font-family: 'Barlow Condensed', sans-serif; }
+.font-mono    { font-family: 'Space Mono', monospace; }
 
-.nav-brand {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 1.45rem;
-  letter-spacing: 3px;
-  color: var(--gold-dark);
-  text-decoration: none;
-  margin-right: 20px;
-  text-transform: uppercase;
-}
-
-.nav-brand span {
-  color: var(--text-muted);
-  font-weight: 600;
-  font-size: 0.72rem;
-  letter-spacing: 4px;
-  margin-left: 10px;
-  vertical-align: middle;
-  text-transform: uppercase;
-}
-
-.nav-link {
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  padding: 7px 13px;
-  border-radius: var(--radius-sm);
-  transition: color 0.18s, background 0.18s;
-  position: relative;
-}
-
-.nav-link:hover {
-  color: var(--gold-dark);
-  background: var(--gold-dim);
-}
-
-.nav-link-active {
-  color: var(--gold-dark) !important;
-  background: var(--gold-dim) !important;
-}
-
-.nav-link-active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-  border-radius: 999px;
-  background: var(--gold);
-}
-
-/* ── AUCTION TITLE ────────────────────────────── */
-.auction-title {
-  position: relative;
-  width: fit-content;
-  margin: 0 auto 0.4rem;
-  padding: 0.2rem 1.5rem 0.35rem;
-  color: #005A8E;
-  font-family: var(--font-display);
-  font-size: clamp(1.6rem, 3vw, 2.6rem);
-  font-weight: 900;
-  line-height: 1.05;
-  letter-spacing: 5px;
-  text-align: center;
-  text-transform: uppercase;
-  text-shadow:
-    0 0 12px rgba(0, 90, 142, 0.30),
-    0 0 32px rgba(0, 90, 142, 0.15),
-    0 2px 3px rgba(0, 0, 0, 0.20);
-  animation: auction-title-enter 700ms ease-out both, auction-title-glow 2.8s ease-in-out 900ms infinite;
-}
-
-.auction-title::after {
-  position: absolute;
-  right: 12%; bottom: 0; left: 12%;
-  height: 2px;
-  border-radius: 999px;
-  background: #005A8E;
-  box-shadow: 0 0 8px rgba(0, 90, 142, 0.45);
-  content: '';
-}
-
-/* ── PLAYER CARD ENTRANCE ─────────────────────── */
-.player-info-enter {
-  animation: player-info-enter 550ms cubic-bezier(0.22, 1, 0.36, 1) both;
-  transform-origin: center top;
-}
-
-/* ── TEAM CARD ────────────────────────────────── */
-.team-card-hover {
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.team-card-hover:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 20px 50px rgba(0, 90, 142, 0.18) !important;
-}
-
-/* ── STATUS BADGES ────────────────────────────── */
+/* ── BADGE STYLES ───────────────────────────────── */
 .badge {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 2px 10px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.8px;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
-.badge-sold         { background: rgba(0,168,90,0.12);   color: #007A45; border: 1px solid rgba(0,168,90,0.30); }
-.badge-unsold       { background: rgba(229,40,63,0.10);  color: #B51830; border: 1px solid rgba(229,40,63,0.25); }
-.badge-pending      { background: rgba(0,120,194,0.12); color: #006BA0; border: 1px solid rgba(0,120,194,0.30); }
-.badge-assigned     { background: rgba(43,114,212,0.10); color: #1A5BB5; border: 1px solid rgba(43,114,212,0.25); }
+.badge-sold     { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.30); }
+.badge-unsold   { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.30); }
+.badge-pending  { background: rgba(56,189,248,0.12); color: #38bdf8; border: 1px solid rgba(56,189,248,0.30); }
+.badge-assigned { background: rgba(129,140,248,0.12); color: #818cf8; border: 1px solid rgba(129,140,248,0.30); }
 
-/* ── LIGHT GLASS CARD ─────────────────────────── */
-.glass-card {
-  background: rgba(255, 255, 255, 0.90);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+/* ── GLASS CARD ─────────────────────────────────── */
+.glass {
+  background: rgba(30, 41, 59, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(148,163,184,0.1);
 }
 
-/* ── KEYFRAMES ────────────────────────────────── */
-@keyframes player-info-enter {
-  from { opacity: 0; transform: translateX(-28px) scale(0.96); }
-  to   { opacity: 1; transform: translateX(0) scale(1); }
+/* ── GLOW ANIMATIONS ────────────────────────────── */
+@keyframes auroraShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
 }
 
-@keyframes auction-title-enter {
-  from { opacity: 0; transform: translateY(-18px) scale(0.94); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes beamDown {
+  0%   { transform: translateY(-100%) rotate(45deg); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(200%) rotate(45deg); opacity: 0; }
 }
 
-@keyframes auction-title-glow {
-  0%, 100% {
-    text-shadow:
-      0 0 12px rgba(0,90,142,0.30),
-      0 0 32px rgba(0,90,142,0.15),
-      0 2px 3px rgba(0,0,0,0.20);
-  }
-  50% {
-    text-shadow:
-      0 0 16px rgba(0,90,142,0.45),
-      0 0 48px rgba(0,90,142,0.22),
-      0 2px 3px rgba(0,0,0,0.20);
-  }
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 0.6; }
 }
 
-/* ── SOLD ANIMATION ───────────────────────────── */
+@keyframes particleDrift {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translateY(-120px) translateX(40px); opacity: 0; }
+}
+
 @keyframes sold-backdrop {
   0%   { opacity: 0; }
   12%  { opacity: 1; }
@@ -240,6 +118,31 @@ body {
   100% { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes flyBid {
+  0%   { opacity: 1; transform: translate(0,0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--fly-x), var(--fly-y)) scale(0.5); }
+}
+
+@keyframes introSlideIn {
+  0%   { opacity: 0; transform: translateX(-60px) scale(0.95); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes introSlideOut {
+  0%   { opacity: 1; transform: translateX(0) scale(1); }
+  100% { opacity: 0; transform: translateX(80px) scale(0.95); }
+}
+
+@keyframes shimmerText {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes glowPulseGold {
+  0%, 100% { text-shadow: 0 0 20px rgba(245,158,11,0.5), 0 0 40px rgba(245,158,11,0.2); }
+  50%       { text-shadow: 0 0 30px rgba(245,158,11,0.8), 0 0 60px rgba(245,158,11,0.4); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .auction-title, .player-info-enter { animation: none; text-shadow: none; }
+  * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
