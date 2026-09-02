@@ -17,7 +17,6 @@ const TeamPage: React.FC = () => {
     fetch('http://localhost:8282/api/players/all-players').then(r => r.json()).then(setPlayers);
   }, []);
 
-  const pocColors = ['#f59e0b', '#818cf8'];
 
   return (
     <AuroraBackground className="min-h-screen">
@@ -92,33 +91,43 @@ const TeamPage: React.FC = () => {
                       {teamPlayers.length} players bought
                     </div>
 
-                    {/* POC chips */}
-                    <div className="w-full space-y-1.5">
-                      {[{ label: 'POC1', name: team.poc1, color: pocColors[0] }, { label: 'POC2', name: team.poc2, color: pocColors[1] }]
-                        .filter(p => p.name)
-                        .map(poc => {
-                          const inits = poc.name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
-                          return (
-                            <div
-                              key={poc.label}
-                              className="flex items-center gap-2 rounded-lg px-2.5 py-1.5"
-                              style={{ background: `${poc.color}12`, border: `1px solid ${poc.color}25` }}
-                            >
-                              <div
-                                className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-black text-white flex-shrink-0 font-display"
-                                style={{ background: poc.color, boxShadow: `0 0 8px ${poc.color}60` }}
-                              >
-                                {inits}
+                    {/* POC badges */}
+                    <div style={{ display: 'flex', gap: 5, width: '100%' }}>
+                      {[
+                        { label: 'POC 1', name: team.poc1, num: '1' },
+                        { label: 'POC 2', name: team.poc2, num: '2' },
+                      ].map((poc) => (
+                        <div key={poc.label} style={{
+                          flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden',
+                          borderRadius: 10,
+                          background: `linear-gradient(135deg, ${barCol}20 0%, ${barCol}08 100%)`,
+                          border: `1px solid ${barCol}45`,
+                          boxShadow: `0 0 12px ${barCol}15, inset 0 1px 0 ${barCol}20`,
+                          padding: '7px 8px',
+                        }}>
+                          <div style={{
+                            position: 'absolute', right: -2, bottom: -6,
+                            fontFamily: "'Bebas Neue', 'Barlow Condensed', sans-serif",
+                            fontSize: 44, fontWeight: 900, lineHeight: 1,
+                            color: `${barCol}18`, userSelect: 'none', pointerEvents: 'none',
+                          }}>{poc.num}</div>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginBottom: 4 }}>
+                            <div style={{ width: 4, height: 4, borderRadius: '50%', background: barCol, boxShadow: `0 0 6px ${barCol}`, flexShrink: 0 }} />
+                            <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: 2, color: barCol, textTransform: 'uppercase', fontFamily: 'monospace' }}>{poc.label}</span>
+                          </div>
+                          {(() => {
+                            const parts = (poc.name || '').trim().split(/\s+/);
+                            const first = parts[0] || '—';
+                            const surname = parts.slice(1).join(' ');
+                            return (
+                              <div style={{ lineHeight: 1.15 }}>
+                                <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: 'clamp(0.65rem, 0.9vw, 0.88rem)', color: '#f1f5f9', textTransform: 'uppercase', letterSpacing: 1 }}>{first}</div>
+                                {surname && <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 'clamp(0.58rem, 0.8vw, 0.78rem)', color: `${barCol}cc`, textTransform: 'uppercase', letterSpacing: 1 }}>{surname}</div>}
                               </div>
-                              <span className="text-[0.68rem] font-semibold uppercase truncate flex-1" style={{ color: poc.color }}>
-                                {poc.name}
-                              </span>
-                              <span className="text-[0.55rem] font-black font-display tracking-wider opacity-70" style={{ color: poc.color }}>
-                                {poc.label}
-                              </span>
-                            </div>
-                          );
-                        })}
+                            );
+                          })()}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </SpotlightCard>

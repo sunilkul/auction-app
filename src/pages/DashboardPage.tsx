@@ -151,20 +151,72 @@ const DashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* POC */}
-                <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 flex justify-between gap-3">
-                  <div>
-                    <div className="text-[0.55rem] text-slate-600 tracking-widest uppercase font-mono mb-1">POC 1</div>
-                    <div className="text-[0.78rem] font-semibold text-slate-300 uppercase truncate max-w-[90px]">
-                      {team.poc1 || '—'}
+                {/* POC — dual player badge */}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {[
+                    { label: 'POC 1', name: team.poc1, num: '1', color: barColor },
+                    { label: 'POC 2', name: team.poc2, num: '2', color: barColor },
+                  ].map((poc) => (
+                    <div key={poc.label} style={{
+                      flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden',
+                      borderRadius: 10,
+                      background: `linear-gradient(135deg, ${poc.color}20 0%, ${poc.color}08 100%)`,
+                      border: `1px solid ${poc.color}45`,
+                      boxShadow: `0 0 12px ${poc.color}15, inset 0 1px 0 ${poc.color}20`,
+                      padding: '7px 8px',
+                    }}>
+                      {/* Big watermark number */}
+                      <div style={{
+                        position: 'absolute', right: -2, bottom: -6,
+                        fontFamily: "'Bebas Neue', 'Barlow Condensed', sans-serif",
+                        fontSize: 48, fontWeight: 900, lineHeight: 1,
+                        color: `${poc.color}18`,
+                        userSelect: 'none', pointerEvents: 'none',
+                      }}>{poc.num}</div>
+
+                      {/* Label badge */}
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginBottom: 4 }}>
+                        <div style={{
+                          width: 4, height: 4, borderRadius: '50%',
+                          background: poc.color,
+                          boxShadow: `0 0 6px ${poc.color}`,
+                          flexShrink: 0,
+                        }} />
+                        <span style={{
+                          fontSize: 8, fontWeight: 800, letterSpacing: 2,
+                          color: poc.color,
+                          textTransform: 'uppercase', fontFamily: 'monospace',
+                        }}>{poc.label}</span>
+                      </div>
+
+                      {/* Name — first name / surname split */}
+                      {(() => {
+                        const parts = (poc.name || '').trim().split(/\s+/);
+                        const first   = parts[0] || '—';
+                        const surname = parts.slice(1).join(' ');
+                        return (
+                          <div style={{ position: 'relative', lineHeight: 1.15 }}>
+                            <div style={{
+                              fontFamily: "'Barlow Condensed', sans-serif",
+                              fontWeight: 900,
+                              fontSize: 'clamp(0.72rem, 1vw, 0.95rem)',
+                              color: '#f1f5f9',
+                              textTransform: 'uppercase', letterSpacing: 1,
+                            }}>{first}</div>
+                            {surname && (
+                              <div style={{
+                                fontFamily: "'Barlow Condensed', sans-serif",
+                                fontWeight: 700,
+                                fontSize: 'clamp(0.65rem, 0.9vw, 0.85rem)',
+                                color: `${poc.color}cc`,
+                                textTransform: 'uppercase', letterSpacing: 1,
+                              }}>{surname}</div>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[0.55rem] text-slate-600 tracking-widest uppercase font-mono mb-1">POC 2</div>
-                    <div className="text-[0.78rem] font-semibold text-slate-300 uppercase truncate max-w-[90px]">
-                      {team.poc2 || '—'}
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </GlowCard>
             );

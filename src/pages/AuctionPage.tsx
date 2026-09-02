@@ -1579,31 +1579,43 @@ function shuffle<T>(array: T[]): T[] {
                   </div>
                 </div>
 
-                {/* ── POC chips (compact) ── */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* ── POC badges ── */}
+                <div style={{ display: 'flex', gap: 5 }}>
                   {[
-                    { label: 'POC1', name: team.poc1, color: '#f59e0b', grad: 'linear-gradient(135deg, #f59e0b, #b45309)' },
-                    { label: 'POC2', name: team.poc2, color: '#818cf8', grad: 'linear-gradient(135deg, #818cf8, #6366f1)' },
-                  ].filter(p => p.name).map(poc => {
-                    const inits = (poc.name || '').trim().split(/\s+/).map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
-                    return (
-                      <div key={poc.label} style={{
-                        display: 'flex', alignItems: 'center', gap: 'var(--card-gap)',
-                        background: `${poc.color}0D`, border: `1px solid ${poc.color}25`,
-                        borderRadius: 6, padding: 'clamp(2px,0.3vw,4px) clamp(4px,0.5vw,7px)',
-                      }}>
-                        <div style={{
-                          width: 'var(--poc-avatar)', height: 'var(--poc-avatar)', borderRadius: '50%', flexShrink: 0,
-                          background: poc.grad,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 'clamp(6px,0.6vw,8px)', fontWeight: 900, color: '#fff',
-                          fontFamily: "'Barlow Condensed', sans-serif",
-                        }}>{inits}</div>
-                        <span style={{ flex: 1, fontSize: 'var(--poc-name)', fontWeight: 700, color: 'rgba(255,255,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: 0.5 }}>{poc.name}</span>
-                        <span style={{ fontSize: 7, fontWeight: 900, color: poc.color, opacity: 0.7, fontFamily: "'Space Mono', monospace", letterSpacing: 0.5, flexShrink: 0 }}>{poc.label}</span>
+                    { label: 'POC 1', name: team.poc1, num: '1' },
+                    { label: 'POC 2', name: team.poc2, num: '2' },
+                  ].map((poc) => (
+                    <div key={poc.label} style={{
+                      flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden',
+                      borderRadius: 8,
+                      background: `linear-gradient(135deg, ${barColor}20 0%, ${barColor}08 100%)`,
+                      border: `1px solid ${barColor}45`,
+                      boxShadow: `0 0 10px ${barColor}12, inset 0 1px 0 ${barColor}18`,
+                      padding: '5px 6px',
+                    }}>
+                      <div style={{
+                        position: 'absolute', right: -2, bottom: -5,
+                        fontFamily: "'Barlow Condensed', sans-serif",
+                        fontSize: 36, fontWeight: 900, lineHeight: 1,
+                        color: `${barColor}18`, userSelect: 'none', pointerEvents: 'none',
+                      }}>{poc.num}</div>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginBottom: 3 }}>
+                        <div style={{ width: 4, height: 4, borderRadius: '50%', background: barColor, boxShadow: `0 0 5px ${barColor}`, flexShrink: 0 }} />
+                        <span style={{ fontSize: 7, fontWeight: 800, letterSpacing: 2, color: barColor, textTransform: 'uppercase', fontFamily: 'monospace' }}>{poc.label}</span>
                       </div>
-                    );
-                  })}
+                      {(() => {
+                        const parts = (poc.name || '').trim().split(/\s+/);
+                        const first = parts[0] || '—';
+                        const surname = parts.slice(1).join(' ');
+                        return (
+                          <div style={{ lineHeight: 1.15 }}>
+                            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 900, fontSize: 'var(--poc-name)', color: '#f1f5f9', textTransform: 'uppercase', letterSpacing: 0.5 }}>{first}</div>
+                            {surname && <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 'var(--poc-name)', color: `${barColor}cc`, textTransform: 'uppercase', letterSpacing: 0.5 }}>{surname}</div>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  ))}
                 </div>
 
                 {/* Bid buttons */}
