@@ -150,11 +150,11 @@ const DashboardPage: React.FC = () => {
               }}>
                 <div>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7FA0', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>POC 1</div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1A3362' }}>{team.poc1 || '—'}</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1A3362', textTransform: 'uppercase' }}>{team.poc1 || '—'}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7FA0', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>POC 2</div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1A3362' }}>{team.poc2 || '—'}</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1A3362', textTransform: 'uppercase' }}>{team.poc2 || '—'}</div>
                 </div>
               </div>
             </div>

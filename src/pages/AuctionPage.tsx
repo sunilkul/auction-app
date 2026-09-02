@@ -225,10 +225,10 @@ function shuffle<T>(array: T[]): T[] {
     hotDemandShownRef.current = false;
   }, [currentPlayerIdx]);
 
-  // Trigger hot demand banner at 10× base price — fires once per player
+  // Trigger hot demand banner at 5× base price — fires once per player
   useEffect(() => {
     const currentPlayer = auctionPlayers[currentPlayerIdx];
-    if (!currentPlayer || hotDemandShownRef.current || currentBid < currentPlayer.basePrice * 2) return;
+    if (!currentPlayer || hotDemandShownRef.current || currentBid < currentPlayer.basePrice * 5) return;
     hotDemandShownRef.current = true;
     setShowHotDemand(true);
     const t = setTimeout(() => setShowHotDemand(false), 2800);
@@ -1383,7 +1383,7 @@ function shuffle<T>(array: T[]): T[] {
                           fontFamily: "'Barlow Condensed', sans-serif",
                           boxShadow: '0 2px 6px rgba(0,0,0,0.20)',
                         }}>{inits}</div>
-                        <span style={{ flex: 1, fontSize: 10.5, fontWeight: 600, color: poc.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ flex: 1, fontSize: 10.5, fontWeight: 600, color: poc.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
                           {poc.name}
                         </span>
                         <span style={{ fontSize: 8, fontWeight: 900, color: poc.color, letterSpacing: 1, fontFamily: "'Barlow Condensed', sans-serif", opacity: 0.75 }}>
