@@ -101,7 +101,7 @@ const TeamPage: React.FC = () => {
                       fontFamily: "'Barlow Condensed', sans-serif",
                       boxShadow: '0 2px 6px rgba(0,0,0,0.20)',
                     }}>{inits}</div>
-                    <span style={{ flex: 1, fontSize: 10.5, fontWeight: 600, color: poc.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ flex: 1, fontSize: 10.5, fontWeight: 600, color: poc.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
                       {poc.name}
                     </span>
                     <span style={{ fontSize: 8, fontWeight: 900, color: poc.color, letterSpacing: 1, fontFamily: "'Barlow Condensed', sans-serif", opacity: 0.75 }}>
