@@ -19,6 +19,7 @@ interface SessionSale {
 const BID_INCREMENT = 2000;
 const BG = '#020617';
 
+
 const AuctionPage: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [recentSoldPlayers, setRecentSoldPlayers] = useState<Player[]>([]);
@@ -38,6 +39,7 @@ const AuctionPage: React.FC = () => {
   const [skillGroups, setSkillGroups] = useState<SkillGroup[]>([]);
   const [auctionStarted, setAuctionStarted] = useState(false);
   const [soldAnim, setSoldAnim] = useState<{ playerName: string; teamName: string; teamLogo: string; amount: number } | null>(null);
+  const [wildcardReveal, setWildcardReveal] = useState<{ player: Player; teamName: string; teamLogo: string; amount: number } | null>(null);
   const [bidDownPending, setBidDownPending] = useState<number | null>(null);
   const [bidDownPassword, setBidDownPassword] = useState('');
   const [bidDownPwError, setBidDownPwError] = useState('');
@@ -49,7 +51,6 @@ const AuctionPage: React.FC = () => {
   const [introExiting, setIntroExiting] = useState(false);
   const [introPlayer, setIntroPlayer] = useState<Player | null>(null);
   const introShownForRef = useRef<number | null>(null);
-  const [openDropdown, setOpenDropdown] = useState<'group' | null>(null);
   const [showAuctionIntro, setShowAuctionIntro] = useState(false);
   const [auctionIntroExiting, setAuctionIntroExiting] = useState(false);
   const auctionIntroTimers = useRef<number[]>([]);
@@ -63,7 +64,12 @@ const AuctionPage: React.FC = () => {
   const [totalBidCount, setTotalBidCount] = useState(0);
   const [showLiveFeed, setShowLiveFeed] = useState(false);
   const [showNextUp, setShowNextUp] = useState(false);
+  const [showPlayerInfo, setShowPlayerInfo] = useState(false);
   const [allSoldPlayers, setAllSoldPlayers] = useState<{ name: string; teamId: number; amount: number }[]>([]);
+  const [floatingNames, setFloatingNames] = useState<{ id: number; name: string; logo: string; side: 'left' | 'right'; x: number; y: number; size: number; color: string }[]>([]);
+  const floatIdRef = useRef(0);
+  const activeTeamNamesRef = useRef<Set<string>>(new Set());
+  const teamsRef = useRef(teams);
 
 function shuffle<T>(array: T[]): T[] {
     const arr = [...array];
@@ -127,17 +133,16 @@ function shuffle<T>(array: T[]): T[] {
       .catch(err => console.error('Failed to fetch groups:', err));
   }, []);
 
-  const availableGroups = selectedSkill > 0
-    ? skillGroups.filter(group => Number(group.skillId) === selectedSkill)
-    : [];
-
   const groupsWithPlayers = new Set(
     players
       .filter(p => p.status === 'NOT_ASSIGNED' && Number(p.skillId) === selectedSkill)
       .map(p => p.groupCode)
   );
 
-  useEffect(() => { setSelectedGroupCode(''); }, [selectedSkill]);
+  useEffect(() => {
+    const groups = skillGroups.filter(g => Number(g.skillId) === selectedSkill);
+    setSelectedGroupCode(groups.length > 0 ? groups[0].groupCode : '');
+  }, [selectedSkill, skillGroups]);
 
   useEffect(() => {
     if (selectedSkill <= 0 || !selectedGroupCode || !auctionStarted) {
@@ -160,6 +165,39 @@ function shuffle<T>(array: T[]): T[] {
       setError('');
     }
   }, [currentPlayerIdx, auctionPlayers]);
+
+  teamsRef.current = teams;
+
+  useEffect(() => {
+    if (auctionStarted) return;
+    const palette = ['rgba(52,211,153,VAL)', 'rgba(96,165,250,VAL)', 'rgba(245,158,11,VAL)', 'rgba(192,132,252,VAL)', 'rgba(251,113,133,VAL)', 'rgba(251,191,36,VAL)', 'rgba(167,243,208,VAL)', 'rgba(147,197,253,VAL)'];
+    const interval = window.setInterval(() => {
+      const all = teamsRef.current;
+      if (all.length === 0) return;
+      const t = all[Math.floor(Math.random() * all.length)];
+      const displayName = t.name.replace(/^epam\s*/i, '').trim();
+      if (activeTeamNamesRef.current.has(displayName)) return;
+      activeTeamNamesRef.current.add(displayName);
+      const opacity = (0.38 + Math.random() * 0.38).toFixed(2);
+      const color = palette[t.id % palette.length].replace('VAL', opacity);
+      const id = ++floatIdRef.current;
+      setFloatingNames(prev => [...prev, {
+        id,
+        name: displayName,
+        logo: t.logo ?? '',
+        side: Math.random() < 0.5 ? 'left' : 'right',
+        x: 12 + Math.random() * 76,
+        y: 8 + Math.random() * 84,
+        size: 22 + Math.floor(Math.random() * 14),
+        color,
+      }]);
+      window.setTimeout(() => {
+        activeTeamNamesRef.current.delete(displayName);
+        setFloatingNames(prev => prev.filter(n => n.id !== id));
+      }, 3000);
+    }, 750);
+    return () => window.clearInterval(interval);
+  }, [auctionStarted]);
 
   // Inject player-intro keyframes once
   useEffect(() => {
@@ -184,6 +222,8 @@ function shuffle<T>(array: T[]): T[] {
       @keyframes launch-pulse{0%,100%{box-shadow:0 0 28px rgba(0,120,194,0.55),0 8px 32px rgba(0,0,0,0.4)}50%{box-shadow:0 0 55px rgba(0,150,220,0.85),0 8px 50px rgba(0,0,0,0.5)}}
       @keyframes dropdown-appear{0%{opacity:0;transform:translateY(-6px) scale(0.97)}100%{opacity:1;transform:translateY(0) scale(1)}}
       @keyframes skill-select{0%{transform:scale(1)}50%{transform:scale(0.95)}100%{transform:scale(1)}}
+      @keyframes stat-pulse{0%,100%{box-shadow:0 0 10px rgba(245,158,11,0.08)}50%{box-shadow:0 0 22px rgba(245,158,11,0.22)}}
+      @keyframes float-pop{0%{opacity:0;transform:translate(-50%,-50%) scale(0.6)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}30%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(0.9)}}
       @keyframes title-glow{0%,100%{text-shadow:0 0 40px rgba(0,200,255,0.15)}50%{text-shadow:0 0 80px rgba(0,200,255,0.35),0 0 120px rgba(0,200,255,0.15)}}
       @keyframes ab-blast{0%{opacity:0;transform:scale(3.2) translateY(-24px);filter:blur(32px)}58%{opacity:1;transform:scale(0.96);filter:blur(0)}78%{transform:scale(1.03)}100%{opacity:1;transform:scale(1)}}
       @keyframes ab-glow{0%,100%{text-shadow:0 0 60px rgba(255,215,0,0.55),0 0 120px rgba(255,215,0,0.22)}50%{text-shadow:0 0 130px rgba(255,215,0,0.95),0 0 220px rgba(255,215,0,0.50),0 0 300px rgba(255,110,0,0.28)}}
@@ -205,6 +245,18 @@ function shuffle<T>(array: T[]): T[] {
       @keyframes flame-flicker{0%,100%{text-shadow:0 0 28px rgba(255,140,0,0.9),0 0 55px rgba(255,80,0,0.5),0 2px 4px rgba(0,0,0,0.3)}50%{text-shadow:0 0 55px rgba(255,200,0,0.99),0 0 110px rgba(255,100,0,0.72),0 0 180px rgba(255,50,0,0.35)}}
       @keyframes summary-card-in{0%{opacity:0;transform:translateY(32px) scale(0.94)}100%{opacity:1;transform:translateY(0) scale(1)}}
       @keyframes team-leader-glow{0%,100%{box-shadow:0 0 0 1px rgba(255,215,0,0.45),0 0 20px rgba(255,215,0,0.18),0 4px 24px rgba(0,0,0,0.5)}50%{box-shadow:0 0 0 2px rgba(255,215,0,0.75),0 0 38px rgba(255,215,0,0.35),0 4px 24px rgba(0,0,0,0.5)}}
+      @keyframes wc-backdrop{0%{opacity:0}8%{opacity:1}84%{opacity:1}100%{opacity:0}}
+      @keyframes wc-lightning{0%,100%{opacity:0}6%,12%{opacity:1}9%,15%{opacity:0}}
+      @keyframes wc-title-slam{0%{opacity:0;letter-spacing:30px;filter:blur(8px)}100%{opacity:1;letter-spacing:8px;filter:blur(0)}}
+      @keyframes wc-mystery-in{0%{opacity:0;transform:scale(0.6) translateY(24px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+      @keyframes wc-card-spin{0%{transform:rotateY(0deg)}100%{transform:rotateY(180deg)}}
+      @keyframes wc-name-slam{0%{opacity:0;transform:scaleX(0.3) scaleY(2) translateY(-40px)}55%{transform:scaleX(1.04) scaleY(0.96) translateY(3px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+      @keyframes wc-stats-bar{0%{opacity:0;transform:translateY(18px) scale(0.88)}100%{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes wc-qmark-pulse{0%,100%{opacity:0.35}50%{opacity:0.75}}
+      @keyframes wc-glitch{0%,92%,100%{opacity:1}93%{opacity:0.15}95%{opacity:0.85}97%{opacity:0.1}98%{opacity:1}}
+      @keyframes pi-info-popup{0%{opacity:0;transform:translateX(18px)}100%{opacity:1;transform:translateX(0)}}
+      @keyframes pi-info-fade{0%{opacity:0;transform:scale(0.97)}100%{opacity:1;transform:scale(1)}}
+      @keyframes pi-scan{0%{top:-35%}100%{top:120%}}
       :root{
         --sidebar:clamp(140px,15vw,248px);
         --grid-gap:clamp(5px,0.55vw,10px);
@@ -241,6 +293,7 @@ function shuffle<T>(array: T[]): T[] {
     setIntroPlayer({ ...currentPlayerForIntro });
     setIntroExiting(false);
     setShowPlayerIntro(true);
+    setShowPlayerInfo(false);
   }, [currentPlayerForIntro?.id, auctionStarted]);
 
   // Auto-dismiss intro after 5s
@@ -276,6 +329,8 @@ function shuffle<T>(array: T[]): T[] {
     ? (skills.find(s => s.id === Number(introPlayer.skillId))?.skillName ?? introPlayer.skillName ?? '')
     : '';
 
+  const isWildcard = !!(selectedSkill && skills.find(s => s.id === selectedSkill && /wild/i.test(s.skillName)));
+
   /* ── Setup screen ─────────────────────────────────────────────────── */
   if (!auctionStarted) {
     const canStart = !!(selectedSkill && selectedGroupCode && groupsWithPlayers.has(selectedGroupCode));
@@ -287,6 +342,7 @@ function shuffle<T>(array: T[]): T[] {
       if (k.includes('BAT')) return { color: '#34d399', bg: 'rgba(52,211,153,0.1)', border: 'rgba(52,211,153,0.3)' };
       if (k.includes('BOWL')) return { color: '#f87171', bg: 'rgba(248,113,113,0.1)', border: 'rgba(248,113,113,0.3)' };
       if (k.includes('ALL')) return { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)' };
+      if (k.includes('WILD')) return { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.45)' };
       return { color: '#818cf8', bg: 'rgba(129,140,248,0.1)', border: 'rgba(129,140,248,0.3)' };
     };
 
@@ -299,7 +355,6 @@ function shuffle<T>(array: T[]): T[] {
           alignItems: 'center', justifyContent: 'center',
           padding: '2rem', position: 'relative', overflow: 'hidden',
         }}
-        onClick={() => openDropdown && setOpenDropdown(null)}
       >
         {/* Grid */}
         <div style={{
@@ -342,7 +397,7 @@ function shuffle<T>(array: T[]): T[] {
           color: '#475569', textTransform: 'uppercase',
           marginBottom: 10, position: 'relative', zIndex: 1,
           animation: 'setup-fade-up 0.5s ease-out 0.18s both',
-        }}>Select Skill &amp; Group to Begin</div>
+        }}>Select Skill to Begin</div>
 
         {/* Divider */}
         <div style={{
@@ -366,152 +421,89 @@ function shuffle<T>(array: T[]): T[] {
           position: 'relative', zIndex: 1,
         }}>
 
-          {/* 01 · Skill */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{
-              fontSize: 9, fontWeight: 800, letterSpacing: 3,
-              color: '#475569', textTransform: 'uppercase',
-              marginBottom: 12, display: 'flex', alignItems: 'center', gap: 7,
-            }}>
-              <span style={{ fontSize: 11, color: '#f59e0b', fontFamily: "'Space Mono', monospace" }}>01</span>
-              <span style={{ opacity: 0.4 }}>·</span>
-              Select Skill
-            </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {skills.map(skill => {
-                const isActive = selectedSkill === skill.id;
-                const acc = skillAccent(skill.skillName);
-                return (
-                  <button
-                    key={skill.id}
-                    onClick={() => { setSelectedSkill(skill.id); setSelectedGroupCode(''); setOpenDropdown(null); }}
-                    style={{
-                      flex: 1, minWidth: 90, padding: '12px 8px',
-                      borderRadius: 10,
-                      border: `1px solid ${isActive ? acc.border : 'rgba(148,163,184,0.1)'}`,
-                      borderBottom: `3px solid ${isActive ? acc.color : 'rgba(148,163,184,0.1)'}`,
-                      background: isActive ? acc.bg : 'rgba(30,41,59,0.6)',
-                      color: isActive ? acc.color : '#475569',
-                      cursor: 'pointer',
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      fontSize: 14, fontWeight: 800, letterSpacing: 1.5,
-                      textTransform: 'uppercase',
-                      transition: 'all 0.18s',
-                      boxShadow: isActive
-                        ? `0 0 14px ${acc.color}40, 0 4px 12px rgba(0,0,0,0.3)`
-                        : '0 2px 6px rgba(0,0,0,0.2)',
-                    }}
-                  >
-                    {skill.skillName.replace(/_/g, ' ')}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 02 · Group */}
-          <div style={{ marginBottom: 26, opacity: selectedSkill ? 1 : 0.45, transition: 'opacity 0.3s' }}>
-            <div style={{
-              fontSize: 9, fontWeight: 800, letterSpacing: 3,
-              color: '#475569', textTransform: 'uppercase',
-              marginBottom: 12, display: 'flex', alignItems: 'center', gap: 7,
-            }}>
-              <span style={{ fontSize: 11, color: '#f59e0b', fontFamily: "'Space Mono', monospace" }}>02</span>
-              <span style={{ opacity: 0.4 }}>·</span>
-              Select Group
-            </div>
-
-            <div style={{ position: 'relative', zIndex: 10 }} onClick={e => e.stopPropagation()}>
-              {/* Trigger */}
-              <button
-                onClick={() => selectedSkill && setOpenDropdown(openDropdown === 'group' ? null : 'group')}
-                disabled={!selectedSkill || availableGroups.length === 0}
-                style={{
-                  width: '100%', padding: '12px 16px',
-                  borderRadius: 10,
-                  border: selectedGroupCode
-                    ? '1px solid rgba(245,158,11,0.40)'
-                    : '1px solid rgba(148,163,184,0.1)',
-                  borderBottom: `3px solid ${selectedGroupCode ? '#f59e0b' : 'rgba(148,163,184,0.1)'}`,
-                  background: selectedGroupCode ? 'rgba(245,158,11,0.08)' : 'rgba(30,41,59,0.6)',
-                  color: selectedGroupCode ? '#f59e0b' : '#475569',
-                  cursor: selectedSkill && availableGroups.length > 0 ? 'pointer' : 'not-allowed',
-                  fontFamily: "'Barlow Condensed', sans-serif",
-                  fontSize: 15, fontWeight: 800, letterSpacing: 2,
-                  textTransform: 'uppercase',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  transition: 'all 0.18s',
-                  boxShadow: selectedGroupCode ? '0 0 12px rgba(245,158,11,0.2), 0 2px 8px rgba(0,0,0,0.3)' : '0 2px 6px rgba(0,0,0,0.2)',
-                }}
-              >
-                <span>{selectedGroupCode
-                  ? `Group ${selectedGroupCode}`
-                  : availableGroups.length === 0 ? 'Select skill first' : 'Choose a group…'
-                }</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                  style={{ transform: openDropdown === 'group' ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', opacity: 0.45, flexShrink: 0 }}>
-                  <polyline points="6 9 12 15 18 9"/>
-                </svg>
-              </button>
-
-              {/* Panel */}
-              {openDropdown === 'group' && availableGroups.length > 0 && (
-                <div style={{
-                  position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
-                  background: 'rgba(15,23,42,0.98)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(245,158,11,0.2)',
-                  borderRadius: 10, overflow: 'hidden', zIndex: 10,
-                  boxShadow: '0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(245,158,11,0.05)',
-                  animation: 'dropdown-appear 0.18s ease-out both',
-                }}>
-                  {availableGroups.map((group, gi) => {
-                    const isChosen = selectedGroupCode === group.groupCode;
-                    const hasPlayers = groupsWithPlayers.has(group.groupCode);
+          {/* Skill */}
+          {(() => {
+            const regularSkills = skills.filter(s => !/wild/i.test(s.skillName));
+            const wildcardSkill = skills.find(s => /wild/i.test(s.skillName));
+            return (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {regularSkills.map(skill => {
+                    const isActive = selectedSkill === skill.id;
+                    const acc = skillAccent(skill.skillName);
                     return (
                       <button
-                        key={group.groupCode}
-                        onClick={() => { if (hasPlayers) { setSelectedGroupCode(group.groupCode); setOpenDropdown(null); } }}
-                        disabled={!hasPlayers}
+                        key={skill.id}
+                        onClick={() => { setSelectedSkill(skill.id); }}
                         style={{
-                          width: '100%', padding: '12px 18px',
-                          background: isChosen ? 'rgba(245,158,11,0.1)' : 'transparent',
-                          border: 'none',
-                          borderBottom: gi < availableGroups.length - 1 ? '1px solid rgba(148,163,184,0.06)' : 'none',
-                          color: !hasPlayers ? '#334155' : isChosen ? '#f59e0b' : '#94a3b8',
-                          cursor: hasPlayers ? 'pointer' : 'not-allowed',
-                          opacity: hasPlayers ? 1 : 0.4,
+                          flex: 1, minWidth: 90, padding: '12px 8px',
+                          borderRadius: 10,
+                          border: `1px solid ${isActive ? acc.border : 'rgba(148,163,184,0.1)'}`,
+                          borderBottom: `3px solid ${isActive ? acc.color : 'rgba(148,163,184,0.1)'}`,
+                          background: isActive ? acc.bg : 'rgba(30,41,59,0.6)',
+                          color: isActive ? acc.color : '#475569',
+                          cursor: 'pointer',
                           fontFamily: "'Barlow Condensed', sans-serif",
-                          fontSize: 16, fontWeight: 800, letterSpacing: 2,
-                          textTransform: 'uppercase', textAlign: 'left',
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          transition: 'background 0.12s, color 0.12s',
+                          fontSize: 14, fontWeight: 800, letterSpacing: 1.5,
+                          textTransform: 'uppercase',
+                          transition: 'all 0.18s',
+                          boxShadow: isActive
+                            ? `0 0 14px ${acc.color}40, 0 4px 12px rgba(0,0,0,0.3)`
+                            : '0 2px 6px rgba(0,0,0,0.2)',
                         }}
-                        onMouseEnter={e => { if (hasPlayers && !isChosen) { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.06)'; (e.currentTarget as HTMLButtonElement).style.color = '#f59e0b'; } }}
-                        onMouseLeave={e => { if (hasPlayers && !isChosen) { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = '#94a3b8'; } }}
                       >
-                        <span style={{ fontSize: 11, color: !hasPlayers ? '#334155' : isChosen ? '#f59e0b' : '#334155' }}>
-                          {isChosen ? '●' : '○'}
-                        </span>
-                        Group {group.groupCode}
-                        {!hasPlayers && (
-                          <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, letterSpacing: 1, color: '#C0CCDB', textTransform: 'uppercase' }}>
-                            No players
-                          </span>
-                        )}
+                        {skill.skillName.replace(/_/g, ' ')}
                       </button>
                     );
                   })}
                 </div>
-              )}
-            </div>
-          </div>
+
+                {wildcardSkill && (() => {
+                  const isActive = selectedSkill === wildcardSkill.id;
+                  return (
+                    <button
+                      key={wildcardSkill.id}
+                      onClick={() => { setSelectedSkill(wildcardSkill.id); }}
+                      style={{
+                        width: '100%', marginTop: 10, padding: '14px 8px',
+                        borderRadius: 10, position: 'relative', overflow: 'hidden',
+                        border: `1px solid ${isActive ? 'rgba(245,158,11,0.6)' : 'rgba(245,158,11,0.2)'}`,
+                        borderBottom: `3px solid ${isActive ? '#f59e0b' : 'rgba(245,158,11,0.2)'}`,
+                        background: isActive
+                          ? 'linear-gradient(135deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.06) 100%)'
+                          : 'rgba(30,41,59,0.6)',
+                        color: isActive ? '#f59e0b' : '#64748b',
+                        cursor: 'pointer',
+                        fontFamily: "'Barlow Condensed', sans-serif",
+                        fontSize: 15, fontWeight: 900, letterSpacing: 3,
+                        textTransform: 'uppercase',
+                        transition: 'all 0.22s',
+                        boxShadow: isActive
+                          ? '0 0 24px rgba(245,158,11,0.35), 0 4px 16px rgba(0,0,0,0.35)'
+                          : '0 2px 8px rgba(0,0,0,0.25)',
+                      }}
+                    >
+                      {isActive && (
+                        <div style={{
+                          position: 'absolute', inset: 0,
+                          background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.10), transparent)',
+                          animation: 'pi-shimmer 2.8s ease-in-out 0.2s infinite',
+                        }} />
+                      )}
+                      <span style={{ position: 'relative', zIndex: 1 }}>
+                        ⚡ {wildcardSkill.skillName.replace(/_/g, ' ')}
+                      </span>
+                    </button>
+                  );
+                })()}
+              </div>
+            );
+          })()}
 
           {/* Launch */}
           <button
             disabled={!canStart}
             onClick={() => {
-              setOpenDropdown(null);
               setShowAuctionIntro(true);
               setAuctionIntroExiting(false);
               const t1 = window.setTimeout(() => setAuctionIntroExiting(true), 4400);
@@ -544,19 +536,7 @@ function shuffle<T>(array: T[]): T[] {
             )}
             Launch Auction
           </button>
-        </div>
 
-        {/* Bottom hint */}
-        <div style={{
-          marginTop: 20, fontSize: 10, color: '#475569',
-          letterSpacing: 2.5, textTransform: 'uppercase',
-          fontFamily: "'Barlow Condensed', sans-serif",
-          animation: 'setup-fade-up 0.5s ease-out 0.6s both',
-          position: 'relative', zIndex: 1,
-        }}>
-          {selectedSkill && selectedGroupCode
-            ? `${selectedSkillObj?.skillName?.replace(/_/g, ' ') ?? ''} · Group ${selectedGroupCode} · Ready`
-            : 'Select skill & group to begin'}
         </div>
 
         {/* ── Auction start cinematic overlay ── */}
@@ -677,14 +657,6 @@ function shuffle<T>(array: T[]): T[] {
                     textShadow: '0 0 12px rgba(255,215,0,0.4)',
                   }}>{selectedSkillObj.skillName.replace(/_/g, ' ')}</span>
                 )}
-                {selectedGroupCode && (
-                  <span style={{
-                    padding: '6px 20px', borderRadius: 999,
-                    background: 'rgba(0,200,255,0.10)', border: '1px solid rgba(0,200,255,0.40)',
-                    color: '#00C8FF', fontSize: 12, fontWeight: 800, letterSpacing: 2.5,
-                    textTransform: 'uppercase',
-                  }}>Group {selectedGroupCode}</span>
-                )}
               </div>
 
               {/* "LET THE BIDDING BEGIN" */}
@@ -721,6 +693,47 @@ function shuffle<T>(array: T[]): T[] {
             }}>Click anywhere to skip</div>
           </div>
         )}
+
+        {/* Floating name panels */}
+        {(['left', 'right'] as const).map(side => (
+          <div key={side} style={{
+            position: 'absolute',
+            ...(side === 'left'
+              ? { left: 0, right: 'calc(50% + 240px)' }
+              : { left: 'calc(50% + 240px)', right: 0 }),
+            top: 0, bottom: 0,
+            overflow: 'hidden', pointerEvents: 'none',
+          }}>
+            {floatingNames.filter(n => n.side === side).map(n => (
+              <div key={n.id} style={{
+                position: 'absolute',
+                left: `${n.x}%`,
+                top: `${n.y}%`,
+                display: 'flex', alignItems: 'center', gap: 8,
+                animation: 'float-pop 3s ease-in-out forwards',
+                willChange: 'opacity, transform',
+                whiteSpace: 'nowrap',
+              }}>
+                {n.logo && (
+                  <img src={n.logo} alt="" style={{
+                    width: n.size * 2.6, height: n.size * 2.6,
+                    objectFit: 'contain', flexShrink: 0,
+                    opacity: 0.85,
+                    filter: 'drop-shadow(0 0 4px rgba(245,158,11,0.3))',
+                  }} />
+                )}
+                <span style={{
+                  fontFamily: "'Bebas Neue', 'Barlow Condensed', sans-serif",
+                  fontSize: n.size,
+                  fontWeight: 400,
+                  color: n.color,
+                  textTransform: 'uppercase',
+                  letterSpacing: 4,
+                }}>{n.name}</span>
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
     );
   }
@@ -981,12 +994,16 @@ function shuffle<T>(array: T[]): T[] {
       });
     } catch (e) { setError('Failed to update auction result.'); return; }
 
-    setSoldAnim({
-      playerName: player.name,
-      teamName: soldTeam?.name ?? '—',
-      teamLogo: soldTeam?.logo ?? '',
-      amount: soldAmount,
-    });
+    if (isWildcard) {
+      setWildcardReveal({ player, teamName: soldTeam?.name ?? '—', teamLogo: soldTeam?.logo ?? '', amount: soldAmount });
+    } else {
+      setSoldAnim({
+        playerName: player.name,
+        teamName: soldTeam?.name ?? '—',
+        teamLogo: soldTeam?.logo ?? '',
+        amount: soldAmount,
+      });
+    }
     setAuctionLog(prev => [{ id: ++eventIdRef.current, type: 'sold' as const, playerName: player.name, teamName: soldTeam?.name ?? '—', amount: soldAmount, time: new Date().toLocaleTimeString() }, ...prev].slice(0, 80));
 
     setSessionSales(prev => [...prev, {
@@ -1010,15 +1027,17 @@ function shuffle<T>(array: T[]): T[] {
       .catch(err => console.error('Failed to refresh recently sold players:', err));
 
     const nextAuctionPlayers = auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx);
+    const delay = isWildcard ? 8000 : 3200;
     setTimeout(() => {
       setSoldAnim(null);
+      setWildcardReveal(null);
       setPlayers(prevPlayers => prevPlayers.filter(p => p.id !== player.id));
       setAuctionPlayers(nextAuctionPlayers);
       setTeamPurse(prevPurse => ({ ...prevPurse, [currentBidTeam]: nextRemainingPurse }));
       setCurrentPlayerIdx(idx => (idx >= nextAuctionPlayers.length - 1 ? 0 : idx));
       setAuctionLog([]);
       setError('');
-    }, 3200);
+    }, delay);
   };
 
   const handleUnsold = async () => {
@@ -1201,59 +1220,265 @@ function shuffle<T>(array: T[]): T[] {
             </div>
           </div>
 
-          {/* Photo — flex 2 = 40% of remaining card space; img absolutely fills the wrapper */}
+          {/* Photo */}
           <div style={{ position: 'relative', width: '100%', flexGrow: 2, flexShrink: 1, flexBasis: 0, minHeight: 160, overflow: 'hidden' }}>
-            <img
-              src={player.photo}
-              alt={player.name}
-              style={{
-                position: 'absolute', inset: 0,
-                width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center',
-                filter: 'brightness(0.95) contrast(1.04) saturate(1.05)',
-              }}
-            />
-            {/* Soft radial vignette — only darkens edges, face stays clear */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'radial-gradient(ellipse 70% 80% at 50% 35%, transparent 40%, rgba(4,12,26,0.55) 80%, rgba(4,12,26,0.88) 100%)',
-            }} />
-            {/* Bottom fade into card */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(to bottom, rgba(6,17,31,0.15) 0%, transparent 30%, transparent 60%, rgba(6,17,31,0.80) 85%, rgba(6,17,31,1) 100%)',
-            }} />
-            {/* Scanline overlay */}
-            <div style={{
-              position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.04,
-              backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,1) 2px, rgba(0,0,0,1) 4px)',
-            }} />
-            {/* Bottom cyan glow line */}
-            <div style={{
-              position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
-              background: 'linear-gradient(90deg, transparent 0%, rgba(0,200,255,0.6) 40%, rgba(0,200,255,0.6) 60%, transparent 100%)',
-              boxShadow: '0 0 14px rgba(0,200,255,0.6)',
-            }} />
-            {/* Player name overlaid on photo — bold sports-card style */}
-            <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, textAlign: 'center', padding: '0 12px' }}>
-              <div style={{
-                fontFamily: "'Barlow Condensed', sans-serif",
-                fontSize: '1.55rem', fontWeight: 900,
-                color: '#FFFFFF',
-                textTransform: 'uppercase', letterSpacing: 2.5,
-                lineHeight: 1,
-                textShadow: '0 0 28px rgba(0,200,255,0.6), 0 2px 10px rgba(0,0,0,0.95), 0 0 55px rgba(0,200,255,0.25)',
-                position: 'relative', overflow: 'hidden', display: 'inline-block',
-              }}>
-                {player.name}
-                {/* shimmer sweep */}
+            {isWildcard ? (
+              /* Mystery placeholder for WILDCARD players */
+              <>
                 <div style={{
-                  position: 'absolute', inset: 0, pointerEvents: 'none',
-                  background: 'linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.38) 50%, transparent 62%)',
-                  animation: 'name-shimmer 4s ease-in-out infinite',
-                  animationDelay: '1.2s',
+                  position: 'absolute', inset: 0,
+                  background: 'radial-gradient(ellipse 80% 70% at 50% 40%, rgba(245,158,11,0.07) 0%, rgba(2,6,23,0.95) 100%)',
                 }} />
-              </div>
-            </div>
+                {/* Scanlines */}
+                <div style={{
+                  position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.06,
+                  backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,1) 2px, rgba(0,0,0,1) 4px)',
+                  animation: 'wc-glitch 3.5s step-end infinite',
+                }} />
+                {/* Watermark question marks */}
+                {['20%', '50%', '80%'].map((left, i) => (
+                  <div key={i} style={{
+                    position: 'absolute', top: '50%', left,
+                    transform: 'translate(-50%, -50%)',
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 72, color: 'rgba(245,158,11,0.08)',
+                    userSelect: 'none', lineHeight: 1,
+                    animation: `wc-qmark-pulse 2.${i + 2}s ease-in-out ${i * 0.4}s infinite`,
+                  }}>?</div>
+                ))}
+                {/* Centre big ? */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}>
+                  <div style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 'clamp(4rem, 8vw, 6rem)',
+                    color: 'rgba(245,158,11,0.55)',
+                    textShadow: '0 0 30px rgba(245,158,11,0.4)',
+                    lineHeight: 1,
+                    animation: 'wc-qmark-pulse 2s ease-in-out infinite',
+                  }}>?</div>
+                  <div style={{
+                    fontFamily: 'monospace', fontSize: 9, fontWeight: 800,
+                    letterSpacing: 3, color: 'rgba(245,158,11,0.5)',
+                    textTransform: 'uppercase',
+                    animation: 'wc-glitch 2.8s step-end infinite',
+                  }}>MYSTERY PLAYER</div>
+                </div>
+                {/* Bottom amber glow line */}
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(245,158,11,0.7) 40%, rgba(245,158,11,0.7) 60%, transparent 100%)',
+                  boxShadow: '0 0 14px rgba(245,158,11,0.5)',
+                }} />
+                {/* Info button — top-right of mystery card */}
+                {player.description && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowPlayerInfo(v => !v); }}
+                    title="Scouting Report"
+                    style={{
+                      position: 'absolute', top: 8, right: 8, zIndex: 10,
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: showPlayerInfo ? 'rgba(245,158,11,0.28)' : 'rgba(245,158,11,0.12)',
+                      border: `1px solid ${showPlayerInfo ? 'rgba(245,158,11,0.75)' : 'rgba(245,158,11,0.45)'}`,
+                      color: '#f59e0b', fontSize: 12, fontWeight: 700,
+                      fontStyle: 'italic', fontFamily: 'Georgia, serif',
+                      cursor: 'pointer', padding: 0, outline: 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      backdropFilter: 'blur(4px)',
+                      boxShadow: showPlayerInfo ? '0 0 16px rgba(245,158,11,0.55)' : '0 0 8px rgba(245,158,11,0.22)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >i</button>
+                )}
+                {/* Hidden name label */}
+                <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, textAlign: 'center', padding: '0 12px' }}>
+                  <div style={{
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    fontSize: '1.55rem', fontWeight: 900,
+                    color: 'rgba(245,158,11,0.6)',
+                    textTransform: 'uppercase', letterSpacing: 6,
+                    lineHeight: 1,
+                    textShadow: '0 0 20px rgba(245,158,11,0.5)',
+                  }}>? ? ? ? ?</div>
+                </div>
+              </>
+            ) : (
+              /* Normal player photo */
+              <>
+                <img
+                  src={player.photo}
+                  alt={player.name}
+                  style={{
+                    position: 'absolute', inset: 0,
+                    width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center',
+                    filter: showPlayerInfo ? 'blur(9px) brightness(0.45) saturate(0.65)' : 'none',
+                    transform: showPlayerInfo ? 'scale(1.14)' : 'scale(1)',
+                    transition: 'filter 0.35s ease, transform 0.35s ease',
+                  }}
+                />
+                {/* Soft radial vignette — only darkens edges, face stays clear */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'radial-gradient(ellipse 70% 80% at 50% 35%, transparent 40%, rgba(4,12,26,0.55) 80%, rgba(4,12,26,0.88) 100%)',
+                }} />
+                {/* Bottom fade into card */}
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'linear-gradient(to bottom, rgba(6,17,31,0.15) 0%, transparent 30%, transparent 60%, rgba(6,17,31,0.80) 85%, rgba(6,17,31,1) 100%)',
+                }} />
+                {/* Bottom cyan glow line */}
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(0,200,255,0.6) 40%, rgba(0,200,255,0.6) 60%, transparent 100%)',
+                  boxShadow: '0 0 14px rgba(0,200,255,0.6)',
+                }} />
+                {/* Info button — top-right of player photo */}
+                {player.description && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowPlayerInfo(v => !v); }}
+                    title="Scouting Report"
+                    style={{
+                      position: 'absolute', top: 8, right: 8, zIndex: 10,
+                      width: 22, height: 22, borderRadius: '50%',
+                      background: showPlayerInfo ? 'rgba(0,200,255,0.28)' : 'rgba(0,200,255,0.12)',
+                      border: `1px solid ${showPlayerInfo ? 'rgba(0,200,255,0.80)' : 'rgba(0,200,255,0.45)'}`,
+                      color: '#00c8ff', fontSize: 12, fontWeight: 700,
+                      fontStyle: 'italic', fontFamily: 'Georgia, serif',
+                      cursor: 'pointer', padding: 0, outline: 'none',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      backdropFilter: 'blur(4px)',
+                      boxShadow: showPlayerInfo ? '0 0 16px rgba(0,200,255,0.55)' : '0 0 8px rgba(0,200,255,0.22)',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >i</button>
+                )}
+                {/* Player name overlaid on photo — bold sports-card style */}
+                <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, textAlign: 'center', padding: '0 12px' }}>
+                  <div style={{
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    fontSize: '1.55rem', fontWeight: 900,
+                    color: '#FFFFFF',
+                    textTransform: 'uppercase', letterSpacing: 2.5,
+                    lineHeight: 1,
+                    textShadow: '0 0 28px rgba(0,200,255,0.6), 0 2px 10px rgba(0,0,0,0.95), 0 0 55px rgba(0,200,255,0.25)',
+                    position: 'relative', overflow: 'hidden', display: 'inline-block',
+                  }}>
+                    {player.name}
+                    {/* shimmer sweep */}
+                    <div style={{
+                      position: 'absolute', inset: 0, pointerEvents: 'none',
+                      background: 'linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.38) 50%, transparent 62%)',
+                      animation: 'name-shimmer 4s ease-in-out infinite',
+                      animationDelay: '1.2s',
+                    }} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Scouting report overlay — HUD style */}
+            {showPlayerInfo && player?.description && (() => {
+              const ac = isWildcard ? '#f59e0b' : '#00c8ff';
+              const acDim = isWildcard ? 'rgba(245,158,11,0.28)' : 'rgba(0,200,255,0.22)';
+              const acRule = isWildcard ? 'rgba(245,158,11,0.30)' : 'rgba(0,200,255,0.28)';
+              return (
+                <div style={{
+                  position: 'absolute', inset: 0, zIndex: 9, overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                  padding: '18px 16px',
+                  background: isWildcard
+                    ? 'linear-gradient(165deg, rgba(14,7,0,0.93) 0%, rgba(5,2,0,0.91) 55%, rgba(10,5,0,0.93) 100%)'
+                    : 'linear-gradient(165deg, rgba(0,9,24,0.93) 0%, rgba(0,4,14,0.91) 55%, rgba(0,12,26,0.93) 100%)',
+                  animation: 'pi-info-fade 0.28s cubic-bezier(0.22,1,0.36,1) both',
+                }}>
+                  {/* Scan line sweep */}
+                  <div style={{
+                    position: 'absolute', left: 0, right: 0, height: '38%',
+                    background: `linear-gradient(to bottom, transparent, ${isWildcard ? 'rgba(245,158,11,0.05)' : 'rgba(0,200,255,0.05)'}, transparent)`,
+                    animation: 'pi-scan 3.8s linear infinite',
+                    pointerEvents: 'none',
+                  }} />
+
+                  {/* HUD corner brackets */}
+                  {(['tl','tr','bl','br'] as const).map(pos => (
+                    <div key={pos} style={{
+                      position: 'absolute',
+                      ...(pos[0] === 't' ? { top: 10 } : { bottom: 10 }),
+                      ...(pos[1] === 'l' ? { left: 10 } : { right: 10 }),
+                      width: 13, height: 13,
+                      borderTop: pos[0] === 't' ? `2px solid ${ac}` : undefined,
+                      borderBottom: pos[0] === 'b' ? `2px solid ${ac}` : undefined,
+                      borderLeft: pos[1] === 'l' ? `2px solid ${ac}` : undefined,
+                      borderRight: pos[1] === 'r' ? `2px solid ${ac}` : undefined,
+                      opacity: 0.75,
+                    }} />
+                  ))}
+
+                  {/* Top glow line */}
+                  <div style={{
+                    position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                    background: `linear-gradient(90deg, transparent, ${ac}, transparent)`,
+                    boxShadow: `0 0 12px ${ac}`,
+                  }} />
+
+                  {/* Label row with flanking rules */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    marginBottom: 12, width: '100%',
+                  }}>
+                    <div style={{ flex: 1, height: 1, background: acRule }} />
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: ac, boxShadow: `0 0 7px ${ac}` }} />
+                    <span style={{
+                      fontFamily: "'Space Mono', monospace",
+                      fontSize: 7, fontWeight: 700, letterSpacing: 3,
+                      color: isWildcard ? 'rgba(245,158,11,0.72)' : 'rgba(0,200,255,0.72)',
+                      textTransform: 'uppercase',
+                    }}>Scouting Report</span>
+                    <div style={{ width: 4, height: 4, borderRadius: '50%', background: ac, boxShadow: `0 0 7px ${ac}` }} />
+                    <div style={{ flex: 1, height: 1, background: acRule }} />
+                  </div>
+
+                  {/* Open quote */}
+                  <div style={{
+                    fontFamily: 'Georgia, serif', fontSize: '2rem', lineHeight: 0.65,
+                    color: acDim, alignSelf: 'flex-start', paddingLeft: 4, userSelect: 'none',
+                  }}>"</div>
+
+                  {/* Description text */}
+                  <p style={{
+                    margin: '8px 0',
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    fontSize: 'clamp(0.82rem, 1.4vw, 1.05rem)',
+                    fontStyle: 'italic', fontWeight: 600,
+                    color: '#f1f5f9',
+                    textAlign: 'center', lineHeight: 1.5, letterSpacing: 0.4,
+                    textShadow: `0 0 22px ${isWildcard ? 'rgba(245,158,11,0.45)' : 'rgba(0,200,255,0.40)'}`,
+                  }}>{player.description}</p>
+
+                  {/* Close quote */}
+                  <div style={{
+                    fontFamily: 'Georgia, serif', fontSize: '2rem', lineHeight: 0.65,
+                    color: acDim, alignSelf: 'flex-end', paddingRight: 4, userSelect: 'none',
+                  }}>"</div>
+
+                  {/* Footer rule */}
+                  <div style={{
+                    marginTop: 12, width: '52%', height: 1,
+                    background: `linear-gradient(90deg, transparent, ${ac}, transparent)`,
+                    boxShadow: `0 0 8px ${ac}55`,
+                  }} />
+
+                  {/* Bottom glow line */}
+                  <div style={{
+                    position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
+                    background: `linear-gradient(90deg, transparent, ${isWildcard ? 'rgba(245,158,11,0.45)' : 'rgba(0,200,255,0.45)'}, transparent)`,
+                  }} />
+                </div>
+              );
+            })()}
           </div>
 
           {/* Body — flex 3 = 60% of remaining card space */}
@@ -1264,7 +1489,7 @@ function shuffle<T>(array: T[]): T[] {
               const statColors = ['#00C8FF', '#00D97E', '#F5A623', '#FF3D5A', '#A78BFA', '#FF8C42'];
               const entries = Object.entries(player.stats || {});
               return (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', flex: 1, minHeight: 0 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', flex: 1, minHeight: 80 }}>
                   {entries.map(([key, value], i) => {
                     const c = statColors[i % statColors.length];
                     const isWide = i === 0 && entries.length % 2 !== 0;
@@ -2196,11 +2421,73 @@ function shuffle<T>(array: T[]): T[] {
               fontFamily: "'Barlow Condensed', sans-serif",
               fontSize: 11, fontWeight: 800, color: '#00C8FF',
               textTransform: 'uppercase', letterSpacing: 6,
-              marginBottom: 22,
+              marginBottom: (isWildcard && introPlayer.description) ? 18 : 22,
               animation: 'pi-label 0.7s cubic-bezier(0.22,1,0.36,1) 0.05s both',
             }}>
               Player Up For Auction
             </div>
+
+            {/* Description — HERO block, shown for wildcard players before the mystery photo */}
+            {isWildcard && introPlayer.description && (
+              <div style={{
+                width: '100%', maxWidth: 540, marginBottom: 24,
+                position: 'relative', padding: '16px 22px 14px',
+                background: 'linear-gradient(160deg, rgba(245,158,11,0.10) 0%, rgba(245,158,11,0.04) 100%)',
+                border: '1px solid rgba(245,158,11,0.30)',
+                borderRadius: 14,
+                boxShadow: '0 0 44px rgba(245,158,11,0.16), inset 0 1px 0 rgba(245,158,11,0.20)',
+                animation: 'pi-slide-up 0.55s cubic-bezier(0.22,1,0.36,1) 0.15s both',
+              }}>
+                {/* HUD corner brackets */}
+                {(['tl','tr','bl','br'] as const).map(pos => (
+                  <div key={pos} style={{
+                    position: 'absolute',
+                    ...(pos[0] === 't' ? { top: 8 } : { bottom: 8 }),
+                    ...(pos[1] === 'l' ? { left: 8 } : { right: 8 }),
+                    width: 11, height: 11,
+                    borderTop: pos[0] === 't' ? '2px solid rgba(245,158,11,0.60)' : undefined,
+                    borderBottom: pos[0] === 'b' ? '2px solid rgba(245,158,11,0.60)' : undefined,
+                    borderLeft: pos[1] === 'l' ? '2px solid rgba(245,158,11,0.60)' : undefined,
+                    borderRight: pos[1] === 'r' ? '2px solid rgba(245,158,11,0.60)' : undefined,
+                  }} />
+                ))}
+                {/* Top glow line */}
+                <div style={{
+                  position: 'absolute', top: 0, left: '12%', right: '12%', height: 2,
+                  background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.72), transparent)',
+                  boxShadow: '0 0 18px rgba(245,158,11,0.50)',
+                }} />
+                {/* Open quote */}
+                <div style={{
+                  fontFamily: 'Georgia, serif', fontSize: '3rem', lineHeight: 0.55,
+                  color: 'rgba(245,158,11,0.28)', textAlign: 'left', userSelect: 'none',
+                  marginBottom: 8,
+                }}>"</div>
+                {/* Description text — the HERO */}
+                <p style={{
+                  margin: '0 0 8px',
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontSize: 'clamp(1.15rem, 2.4vw, 1.65rem)',
+                  fontStyle: 'italic', fontWeight: 700,
+                  color: '#f1f5f9',
+                  textAlign: 'center',
+                  lineHeight: 1.4, letterSpacing: 0.5,
+                  textShadow: '0 0 30px rgba(245,158,11,0.58), 0 0 55px rgba(245,158,11,0.26)',
+                }}>
+                  {introPlayer.description}
+                </p>
+                {/* Close quote */}
+                <div style={{
+                  fontFamily: 'Georgia, serif', fontSize: '3rem', lineHeight: 0.55,
+                  color: 'rgba(245,158,11,0.28)', textAlign: 'right', userSelect: 'none',
+                }}>"</div>
+                {/* Bottom glow line */}
+                <div style={{
+                  position: 'absolute', bottom: 0, left: '12%', right: '12%', height: 2,
+                  background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.38), transparent)',
+                }} />
+              </div>
+            )}
 
             {/* Photo */}
             <div style={{
@@ -2216,19 +2503,37 @@ function shuffle<T>(array: T[]): T[] {
               {/* Border ring */}
               <div style={{
                 position: 'absolute', inset: -5, borderRadius: '50%',
-                border: '2px solid rgba(0,200,255,0.55)',
+                border: `2px solid ${isWildcard ? 'rgba(245,158,11,0.55)' : 'rgba(0,200,255,0.55)'}`,
                 pointerEvents: 'none',
               }} />
-              <img
-                src={introPlayer.photo}
-                alt={introPlayer.name}
-                style={{
+              {isWildcard ? (
+                <div style={{
                   width: 172, height: 172, borderRadius: '50%',
-                  objectFit: 'cover',
-                  border: '3px solid rgba(0,200,255,0.35)',
-                  display: 'block', position: 'relative', zIndex: 1,
-                }}
-              />
+                  border: '3px solid rgba(245,158,11,0.35)',
+                  background: 'radial-gradient(ellipse 80% 80% at 50% 50%, rgba(245,158,11,0.12) 0%, rgba(2,6,23,0.95) 100%)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  position: 'relative', zIndex: 1,
+                }}>
+                  <div style={{
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: 72, color: 'rgba(245,158,11,0.6)',
+                    textShadow: '0 0 24px rgba(245,158,11,0.5)',
+                    lineHeight: 1,
+                    animation: 'wc-qmark-pulse 2s ease-in-out infinite',
+                  }}>?</div>
+                </div>
+              ) : (
+                <img
+                  src={introPlayer.photo}
+                  alt={introPlayer.name}
+                  style={{
+                    width: 172, height: 172, borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: '3px solid rgba(0,200,255,0.35)',
+                    display: 'block', position: 'relative', zIndex: 1,
+                  }}
+                />
+              )}
               {introPlayer.isNewPlayer === 1 && (
                 <div style={{
                   position: 'absolute', bottom: 6, right: -2, zIndex: 2,
@@ -2243,7 +2548,7 @@ function shuffle<T>(array: T[]): T[] {
             {/* Shimmer rule */}
             <div style={{
               width: '55%', height: 1, marginBottom: 18, position: 'relative', overflow: 'hidden',
-              background: 'linear-gradient(90deg, transparent, rgba(0,200,255,0.45), transparent)',
+              background: `linear-gradient(90deg, transparent, ${isWildcard ? 'rgba(245,158,11,0.45)' : 'rgba(0,200,255,0.45)'}, transparent)`,
             }}>
               <div style={{
                 position: 'absolute', top: 0, width: '38%', height: '100%',
@@ -2256,18 +2561,19 @@ function shuffle<T>(array: T[]): T[] {
             <div style={{
               fontFamily: "'Bebas Neue', 'Barlow Condensed', sans-serif",
               fontSize: 'clamp(2.6rem, 6vw, 4.4rem)',
-              color: '#FFFFFF', letterSpacing: 4, lineHeight: 1,
+              color: isWildcard ? 'rgba(245,158,11,0.65)' : '#FFFFFF',
+              letterSpacing: isWildcard ? 14 : 4, lineHeight: 1,
               textTransform: 'uppercase', marginBottom: 16,
-              textShadow: '0 0 40px rgba(255,255,255,0.22)',
+              textShadow: isWildcard ? '0 0 30px rgba(245,158,11,0.5)' : '0 0 40px rgba(255,255,255,0.22)',
               animation: 'pi-name 0.6s cubic-bezier(0.22,1,0.36,1) 0.38s both',
             }}>
-              {introPlayer.name}
+              {isWildcard ? '? ? ? ? ?' : introPlayer.name}
             </div>
 
             {/* Badges */}
             <div style={{
               display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap',
-              marginBottom: 22,
+              marginBottom: introPlayer.description && !isWildcard ? 14 : 22,
               animation: 'pi-slide-up 0.5s cubic-bezier(0.22,1,0.36,1) 0.58s both',
             }}>
               {introSkillName && (
@@ -2278,15 +2584,29 @@ function shuffle<T>(array: T[]): T[] {
                   textTransform: 'uppercase',
                 }}>{introSkillName}</span>
               )}
-              {introPlayer.groupCode && (
-                <span style={{
-                  padding: '4px 14px', borderRadius: 999,
-                  background: 'rgba(0,200,255,0.10)', border: '1px solid rgba(0,200,255,0.38)',
-                  color: '#00C8FF', fontSize: 11, fontWeight: 800, letterSpacing: 1.5,
-                  textTransform: 'uppercase',
-                }}>GRP: {introPlayer.groupCode}</span>
-              )}
             </div>
+
+            {/* Description — non-wildcard players */}
+            {!isWildcard && introPlayer.description && (
+              <div style={{
+                maxWidth: 520, textAlign: 'center',
+                padding: '10px 20px', marginBottom: 16,
+                background: 'rgba(245,158,11,0.07)',
+                border: '1px solid rgba(245,158,11,0.22)',
+                borderRadius: 10,
+                boxShadow: '0 0 28px rgba(245,158,11,0.12)',
+                animation: 'pi-slide-up 0.5s cubic-bezier(0.22,1,0.36,1) 0.66s both',
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 'clamp(0.85rem, 1.8vw, 1.15rem)',
+                fontStyle: 'italic',
+                color: 'rgba(245,158,11,0.88)',
+                letterSpacing: 0.5, lineHeight: 1.45,
+              }}>
+                <span style={{ color: 'rgba(245,158,11,0.38)', fontSize: '1.2em', marginRight: 5 }}>"</span>
+                {introPlayer.description}
+                <span style={{ color: 'rgba(245,158,11,0.38)', fontSize: '1.2em', marginLeft: 5 }}>"</span>
+              </div>
+            )}
 
             {/* Stats grid */}
             {Object.keys(introPlayer.stats || {}).length > 0 && (() => {
@@ -2465,6 +2785,296 @@ function shuffle<T>(array: T[]): T[] {
         </div>
       )}
 
+      {/* ── WILDCARD reveal overlay ── */}
+      {wildcardReveal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1100,
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          padding: 'clamp(12px, 3vh, 24px) clamp(16px, 3vw, 40px) clamp(12px, 3vh, 24px)',
+          background: 'rgba(2,4,18,0.98)',
+          animation: 'wc-backdrop 8s ease-in-out forwards',
+          backdropFilter: 'blur(14px)',
+          overflow: 'hidden',
+        }}>
+          <FireworksCanvas />
+
+          {/* Radial spotlight */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: 'radial-gradient(ellipse 75% 55% at 50% 42%, rgba(245,158,11,0.11) 0%, transparent 65%)',
+          }} />
+
+          {/* Lightning flash */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: 'rgba(245,200,80,0.08)',
+            animation: 'wc-lightning 1.6s ease-out 0.05s both',
+          }} />
+
+          {/* Ambient grid */}
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            backgroundImage: 'linear-gradient(rgba(245,158,11,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,158,11,0.025) 1px,transparent 1px)',
+            backgroundSize: '64px 64px',
+          }} />
+
+          {/* ── Title ── */}
+          <div style={{ textAlign: 'center', position: 'relative', zIndex: 2, flexShrink: 0, width: '100%' }}>
+            <div style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 'clamp(1rem, 3vw, 1.9rem)',
+              letterSpacing: 'clamp(5px, 1.5vw, 12px)',
+              color: '#f59e0b',
+              textShadow: '0 0 28px rgba(245,158,11,0.95), 0 0 60px rgba(245,158,11,0.5)',
+              animation: 'wc-title-slam 0.6s cubic-bezier(0.22,1,0.36,1) 0.28s both',
+              lineHeight: 1,
+            }}>⚡ WILDCARD REVEAL</div>
+            <div style={{
+              height: 2, marginTop: 8,
+              background: 'linear-gradient(90deg, transparent 0%, #f59e0b 25%, #fbbf24 50%, #f59e0b 75%, transparent 100%)',
+              animation: 'setup-expand 0.55s cubic-bezier(0.22,1,0.36,1) 0.8s both',
+              transformOrigin: 'center',
+              boxShadow: '0 0 10px rgba(245,158,11,0.6)',
+            }} />
+          </div>
+
+          {/* ── Centre: 3D card + name ── */}
+          <div style={{
+            flex: 1, minHeight: 0,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 'clamp(8px, 1.8vh, 16px)',
+            position: 'relative', zIndex: 2,
+          }}>
+
+            {/* Card entrance + 3D spin */}
+            <div style={{
+              display: 'inline-block',
+              animation: 'wc-mystery-in 0.55s cubic-bezier(0.22,1,0.36,1) 1.25s both',
+            }}>
+              <div style={{ perspective: '1100px' }}>
+                <div style={{
+                  position: 'relative',
+                  width: 'clamp(100px, 12vw, 148px)',
+                  height: 'clamp(130px, 18vh, 190px)',
+                  transformStyle: 'preserve-3d',
+                  animation: 'wc-card-spin 0.72s cubic-bezier(0.42,0,0.18,1.15) 2.05s both',
+                  borderRadius: 14,
+                }}>
+
+                  {/* Front face — mystery */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                    borderRadius: 14, overflow: 'hidden',
+                    border: '2px solid rgba(245,158,11,0.38)',
+                    boxShadow: '0 0 24px rgba(245,158,11,0.28)',
+                    background: 'radial-gradient(ellipse 80% 70% at 50% 35%, rgba(245,158,11,0.10) 0%, rgba(2,6,23,0.98) 100%)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      backgroundImage: 'repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.28) 2px,rgba(0,0,0,0.28) 4px)',
+                      animation: 'wc-glitch 3.2s step-end infinite',
+                    }} />
+                    <div style={{
+                      fontFamily: "'Bebas Neue', sans-serif",
+                      fontSize: 'clamp(2.8rem, 6vw, 4.5rem)',
+                      color: 'rgba(245,158,11,0.55)',
+                      textShadow: '0 0 18px rgba(245,158,11,0.5)',
+                      lineHeight: 1,
+                      animation: 'wc-qmark-pulse 1.9s ease-in-out infinite',
+                      position: 'relative', zIndex: 1,
+                    }}>?</div>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 7, fontWeight: 800, letterSpacing: 3,
+                      color: 'rgba(245,158,11,0.38)', textTransform: 'uppercase', marginTop: 6,
+                      position: 'relative', zIndex: 1,
+                    }}>HIDDEN</div>
+                  </div>
+
+                  {/* Back face — real photo */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    backfaceVisibility: 'hidden',
+                    WebkitBackfaceVisibility: 'hidden',
+                    transform: 'rotateY(180deg)',
+                    borderRadius: 14, overflow: 'hidden',
+                    border: '2px solid rgba(245,158,11,0.85)',
+                    boxShadow: '0 0 48px rgba(245,158,11,0.65), 0 0 90px rgba(245,158,11,0.28)',
+                  }}>
+                    <img
+                      src={wildcardReveal.player.photo}
+                      alt={wildcardReveal.player.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }}
+                    />
+                    {/* Gold shine sweep after reveal */}
+                    <div style={{
+                      position: 'absolute', inset: 0, pointerEvents: 'none',
+                      background: 'linear-gradient(105deg, transparent 35%, rgba(255,215,0,0.28) 50%, transparent 65%)',
+                      animation: 'pi-shimmer 3s ease-in-out 2.8s infinite',
+                    }} />
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            {/* Player name */}
+            <div style={{
+              fontFamily: "'Bebas Neue', sans-serif",
+              fontSize: 'clamp(1.6rem, 4.5vw, 3.2rem)',
+              color: '#FFFFFF',
+              letterSpacing: 'clamp(3px, 0.8vw, 6px)',
+              lineHeight: 1,
+              textShadow: '0 0 36px rgba(255,255,255,0.4), 0 0 72px rgba(245,158,11,0.22)',
+              animation: 'wc-name-slam 0.58s cubic-bezier(0.22,1,0.36,1) 2.88s both',
+              textTransform: 'uppercase', textAlign: 'center',
+            }}>{wildcardReveal.player.name}</div>
+
+            {/* Skill + group badges */}
+            <div style={{
+              display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap',
+              animation: 'sold-fade-up 0.38s ease-out 3.42s both',
+            }}>
+              {wildcardReveal.player.skillName && (
+                <span style={{
+                  fontFamily: 'monospace', fontSize: 8, fontWeight: 800, letterSpacing: 2,
+                  textTransform: 'uppercase', padding: '3px 12px', borderRadius: 999,
+                  background: 'rgba(0,217,126,0.12)', border: '1px solid rgba(0,217,126,0.38)',
+                  color: '#00D97E',
+                }}>{wildcardReveal.player.skillName}</span>
+              )}
+            </div>
+
+            {wildcardReveal.player.description && (
+              <div style={{
+                maxWidth: 500, textAlign: 'center',
+                padding: 'clamp(8px, 1.4vh, 14px) clamp(14px, 2.5vw, 24px)',
+                background: 'rgba(245,158,11,0.07)',
+                border: '1px solid rgba(245,158,11,0.26)',
+                borderRadius: 12,
+                boxShadow: '0 0 32px rgba(245,158,11,0.14)',
+                animation: 'sold-fade-up 0.44s ease-out 3.65s both',
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontSize: 'clamp(0.88rem, 2vw, 1.2rem)',
+                fontStyle: 'italic',
+                color: 'rgba(245,158,11,0.90)',
+                letterSpacing: 0.5, lineHeight: 1.45,
+                marginTop: 10,
+              }}>
+                <span style={{ color: 'rgba(245,158,11,0.38)', fontSize: '1.2em', marginRight: 5 }}>"</span>
+                {wildcardReveal.player.description}
+                <span style={{ color: 'rgba(245,158,11,0.38)', fontSize: '1.2em', marginLeft: 5 }}>"</span>
+              </div>
+            )}
+
+          </div>
+
+          {/* ── Bottom panel: stats + sold-to ── */}
+          <div style={{ width: '100%', maxWidth: 660, flexShrink: 0, position: 'relative', zIndex: 2 }}>
+
+            {/* Stats — compact horizontal row */}
+            {Object.keys(wildcardReveal.player.stats || {}).length > 0 && (() => {
+              const statColors = ['#00C8FF', '#00D97E', '#F5A623', '#FF3D5A', '#A78BFA', '#FF8C42'];
+              const entries = Object.entries(wildcardReveal.player.stats || {});
+              return (
+                <div style={{ display: 'flex', gap: 'clamp(4px, 0.8vw, 8px)', marginBottom: 'clamp(8px, 1.6vh, 14px)' }}>
+                  {entries.map(([key, value], i) => {
+                    const c = statColors[i % statColors.length];
+                    return (
+                      <div key={key} style={{
+                        flex: 1, minWidth: 0,
+                        background: `linear-gradient(160deg, ${c}14 0%, rgba(2,6,23,0.75) 100%)`,
+                        border: `1px solid ${c}28`,
+                        borderTop: `2px solid ${c}`,
+                        borderRadius: 8,
+                        padding: 'clamp(5px, 1vh, 9px) 6px',
+                        textAlign: 'center',
+                        animation: 'wc-stats-bar 0.38s cubic-bezier(0.22,1,0.36,1) both',
+                        animationDelay: `${3.82 + i * 0.09}s`,
+                      }}>
+                        <div style={{
+                          fontSize: 7, fontWeight: 800, letterSpacing: 1.5,
+                          color: `${c}75`, textTransform: 'uppercase', fontFamily: 'monospace',
+                          marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{key.replace(/_/g, ' ')}</div>
+                        <div style={{
+                          fontFamily: "'Barlow Condensed', sans-serif",
+                          fontSize: 'clamp(1rem, 2.2vw, 1.5rem)',
+                          fontWeight: 900, color: c, lineHeight: 1,
+                        }}>{value}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Divider */}
+            <div style={{
+              height: 1,
+              background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.35), transparent)',
+              marginBottom: 'clamp(8px, 1.6vh, 14px)',
+              animation: 'sold-fade-up 0.3s ease-out 5.3s both',
+            }} />
+
+            {/* Sold-to bar — horizontal */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 'clamp(10px, 2vw, 22px)',
+              animation: 'sold-fade-up 0.48s ease-out 5.5s both',
+            }}>
+              <div style={{
+                fontSize: 9, fontWeight: 800, letterSpacing: 3, textTransform: 'uppercase',
+                color: 'rgba(255,255,255,0.28)', flexShrink: 0,
+              }}>SOLD TO</div>
+
+              {wildcardReveal.teamLogo && (
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <div style={{
+                    position: 'absolute', inset: -8, borderRadius: '50%',
+                    background: 'rgba(255,215,0,0.18)', filter: 'blur(12px)', pointerEvents: 'none',
+                  }} />
+                  <div style={{
+                    width: 'clamp(38px, 5.5vw, 56px)', height: 'clamp(38px, 5.5vw, 56px)',
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,215,0,0.62)',
+                    boxShadow: '0 0 18px rgba(255,215,0,0.55)',
+                    background: 'rgba(2,6,23,0.9)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                  }}>
+                    <img src={wildcardReveal.teamLogo} alt="" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+                  </div>
+                </div>
+              )}
+
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 'clamp(1.2rem, 3vw, 2rem)',
+                letterSpacing: 'clamp(2px, 0.5vw, 5px)',
+                color: '#FFD700',
+                textShadow: '0 0 22px rgba(255,215,0,0.85)',
+                textTransform: 'uppercase', whiteSpace: 'nowrap',
+              }}>{wildcardReveal.teamName.replace(/^epam\s*/i, '').trim()}</div>
+
+              <div style={{
+                width: 1, height: 28, background: 'rgba(255,255,255,0.12)', flexShrink: 0,
+              }} />
+
+              <div style={{
+                fontFamily: "'Space Mono', monospace",
+                fontSize: 'clamp(0.95rem, 2vw, 1.3rem)',
+                fontWeight: 700, color: '#00D97E', flexShrink: 0,
+                textShadow: '0 0 16px rgba(0,217,126,0.6)',
+              }}>₹{wildcardReveal.amount.toLocaleString()}</div>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
       {/* ── Flying bid amount ── */}
       {flyAnim && (
         <div
@@ -2625,6 +3235,7 @@ function shuffle<T>(array: T[]): T[] {
           </div>
         </div>
       )}
+
     </div>
   );
 };

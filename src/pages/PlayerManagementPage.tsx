@@ -67,6 +67,11 @@ const PlayerManagementPage: React.FC = () => {
     if (!teamId)                          { setSellModal(m => m ? { ...m, error: 'Please select a team.' } : m); return; }
     const soldPrice = parseInt(price, 10);
     if (isNaN(soldPrice) || soldPrice <= 0) { setSellModal(m => m ? { ...m, error: 'Enter a valid price.' } : m); return; }
+    const selectedTeam = teams.find(t => t.id === teamId);
+    if (selectedTeam && selectedTeam.remainingPurse < soldPrice) {
+      setSellModal(m => m ? { ...m, error: `${selectedTeam.name} has insufficient purse (₹${selectedTeam.remainingPurse.toLocaleString()} remaining).` } : m);
+      return;
+    }
     setSellModal(m => m ? { ...m, submitting: true, error: '' } : m);
     try {
       await fetch('http://localhost:8282/api/players/auction', {
@@ -306,12 +311,47 @@ const PlayerManagementPage: React.FC = () => {
               <select
                 value={sellModal.teamId ?? ''}
                 onChange={e => setSellModal(m => m ? { ...m, teamId: Number(e.target.value) || null, error: '' } : m)}
-                className="w-full px-4 py-2.5 rounded-xl mb-4 text-sm font-semibold text-slate-100 outline-none"
+                className="w-full px-4 py-2.5 rounded-xl mb-2 text-sm font-semibold text-slate-100 outline-none"
                 style={{ background: 'rgba(30,41,59,0.8)', border: '1px solid rgba(148,163,184,0.15)' }}
               >
                 <option value="">— Choose a team —</option>
-                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                {teams.map(t => {
+                  const askPrice = parseInt(sellModal.price, 10);
+                  const canAfford = isNaN(askPrice) || askPrice <= 0 || t.remainingPurse >= askPrice;
+                  return (
+                    <option key={t.id} value={t.id} disabled={!canAfford}>
+                      {t.name}{!canAfford ? ' — Insufficient Balance' : ''}
+                    </option>
+                  );
+                })}
               </select>
+
+              {/* Purse hint for the selected team */}
+              {sellModal.teamId && (() => {
+                const t = teams.find(t => t.id === sellModal.teamId);
+                if (!t) return null;
+                const askPrice = parseInt(sellModal.price, 10);
+                const canAfford = isNaN(askPrice) || askPrice <= 0 || t.remainingPurse >= askPrice;
+                const pct = Math.round((t.remainingPurse / t.purse) * 100);
+                const barColor = pct > 60 ? '#34d399' : pct > 30 ? '#f59e0b' : '#f87171';
+                return (
+                  <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl mb-4"
+                    style={{
+                      background: canAfford ? 'rgba(52,211,153,0.06)' : 'rgba(248,113,113,0.06)',
+                      border: `1px solid ${canAfford ? 'rgba(52,211,153,0.18)' : 'rgba(248,113,113,0.25)'}`,
+                    }}>
+                    <div>
+                      <div className="text-[0.55rem] text-slate-500 font-mono uppercase tracking-widest mb-0.5">Remaining Purse</div>
+                      <div className="font-mono text-sm font-bold" style={{ color: barColor }}>
+                        ₹{t.remainingPurse.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="text-[0.6rem] font-bold uppercase tracking-wider" style={{ color: canAfford ? '#34d399' : '#f87171' }}>
+                      {canAfford ? '✓ Can Afford' : '⚠ Insufficient'}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Price input */}
               <label className="block text-[0.6rem] text-slate-500 tracking-[0.25em] uppercase font-mono mb-2">Sold Price</label>
@@ -489,7 +529,6 @@ const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillN
           </div>
           <div>
             <div className="text-sm font-semibold text-slate-200 whitespace-nowrap">{p.name}</div>
-            {p.groupCode && <div className="text-[0.6rem] text-slate-600 font-mono mt-0.5">{p.groupCode}</div>}
           </div>
         </div>
       </td>

@@ -25,4 +25,5 @@ export interface Player {
   isNewPlayer: number;
   groupCode: string;
   isConsideredForAuction: number;
+  description?: string;
 }
