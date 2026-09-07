@@ -70,6 +70,7 @@ const AuctionPage: React.FC = () => {
   const floatIdRef = useRef(0);
   const activeTeamNamesRef = useRef<Set<string>>(new Set());
   const teamsRef = useRef(teams);
+  const proceedToNextPlayerRef = useRef<(() => void) | null>(null);
 
 function shuffle<T>(array: T[]): T[] {
     const arr = [...array];
@@ -273,6 +274,7 @@ function shuffle<T>(array: T[]): T[] {
         --squad-nm:clamp(7px,0.85vw,11px);
         --squad-price:clamp(10px,1vw,13px);
       }
+      .pi-scroll::-webkit-scrollbar{display:none}
     `;
     document.head.appendChild(s);
   }, []);
@@ -1027,8 +1029,8 @@ function shuffle<T>(array: T[]): T[] {
       .catch(err => console.error('Failed to refresh recently sold players:', err));
 
     const nextAuctionPlayers = auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx);
-    const delay = isWildcard ? 8000 : 3200;
-    setTimeout(() => {
+    proceedToNextPlayerRef.current = () => {
+      proceedToNextPlayerRef.current = null;
       setSoldAnim(null);
       setWildcardReveal(null);
       setPlayers(prevPlayers => prevPlayers.filter(p => p.id !== player.id));
@@ -1037,7 +1039,7 @@ function shuffle<T>(array: T[]): T[] {
       setCurrentPlayerIdx(idx => (idx >= nextAuctionPlayers.length - 1 ? 0 : idx));
       setAuctionLog([]);
       setError('');
-    }, delay);
+    };
   };
 
   const handleUnsold = async () => {
@@ -2409,10 +2411,13 @@ function shuffle<T>(array: T[]): T[] {
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 46, background: '#000', zIndex: 4 }} />
 
           {/* Main content */}
-          <div style={{
+          <div className="pi-scroll" style={{
             position: 'relative', zIndex: 2,
-            textAlign: 'center', padding: '0 40px',
+            textAlign: 'center', padding: '0 40px 16px',
             maxWidth: 580, width: '100%',
+            maxHeight: 'calc(100vh - 100px)',
+            overflowY: 'auto',
+            scrollbarWidth: 'none',
             display: 'flex', flexDirection: 'column', alignItems: 'center',
           }}>
 
@@ -2430,7 +2435,7 @@ function shuffle<T>(array: T[]): T[] {
             {/* Description — HERO block, shown for wildcard players before the mystery photo */}
             {isWildcard && introPlayer.description && (
               <div style={{
-                width: '100%', maxWidth: 540, marginBottom: 24,
+                width: '100%', maxWidth: 540, marginBottom: 'clamp(10px, 1.6vh, 20px)',
                 position: 'relative', padding: '16px 22px 14px',
                 background: 'linear-gradient(160deg, rgba(245,158,11,0.10) 0%, rgba(245,158,11,0.04) 100%)',
                 border: '1px solid rgba(245,158,11,0.30)',
@@ -2491,7 +2496,7 @@ function shuffle<T>(array: T[]): T[] {
 
             {/* Photo */}
             <div style={{
-              position: 'relative', marginBottom: 20,
+              position: 'relative', marginBottom: 'clamp(8px, 1.2vh, 16px)',
               animation: 'pi-photo 0.75s cubic-bezier(0.22,1,0.36,1) 0.15s both',
             }}>
               {/* Outer glow ring */}
@@ -2547,7 +2552,7 @@ function shuffle<T>(array: T[]): T[] {
 
             {/* Shimmer rule */}
             <div style={{
-              width: '55%', height: 1, marginBottom: 18, position: 'relative', overflow: 'hidden',
+              width: '55%', height: 1, marginBottom: 'clamp(8px, 1.2vh, 14px)', position: 'relative', overflow: 'hidden',
               background: `linear-gradient(90deg, transparent, ${isWildcard ? 'rgba(245,158,11,0.45)' : 'rgba(0,200,255,0.45)'}, transparent)`,
             }}>
               <div style={{
@@ -2563,7 +2568,7 @@ function shuffle<T>(array: T[]): T[] {
               fontSize: 'clamp(2.6rem, 6vw, 4.4rem)',
               color: isWildcard ? 'rgba(245,158,11,0.65)' : '#FFFFFF',
               letterSpacing: isWildcard ? 14 : 4, lineHeight: 1,
-              textTransform: 'uppercase', marginBottom: 16,
+              textTransform: 'uppercase', marginBottom: 'clamp(6px, 0.9vh, 12px)',
               textShadow: isWildcard ? '0 0 30px rgba(245,158,11,0.5)' : '0 0 40px rgba(255,255,255,0.22)',
               animation: 'pi-name 0.6s cubic-bezier(0.22,1,0.36,1) 0.38s both',
             }}>
@@ -2617,7 +2622,7 @@ function shuffle<T>(array: T[]): T[] {
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                gap: 10, width: '100%', marginBottom: 22,
+                gap: 10, width: '100%', marginBottom: 'clamp(10px, 1.4vh, 18px)',
               }}>
                 {introEntries.map(([k, v], i) => {
                   return (
@@ -2646,7 +2651,7 @@ function shuffle<T>(array: T[]): T[] {
             })()}
 
             {/* Divider */}
-            <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.07)', marginBottom: 18 }} />
+            <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.07)', marginBottom: 'clamp(8px, 1.2vh, 14px)' }} />
 
             {/* Base price */}
             <div style={{ animation: 'pi-scale-in 0.6s cubic-bezier(0.22,1,0.36,1) 0.95s both' }}>
@@ -2695,13 +2700,13 @@ function shuffle<T>(array: T[]): T[] {
           position: 'fixed', inset: 0, zIndex: 1000,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           background: 'rgba(4,8,15,0.82)',
-          animation: 'sold-backdrop 3.2s ease-in-out forwards',
+          animation: 'sold-backdrop-in 0.4s ease-out forwards',
           backdropFilter: 'blur(6px)',
         }}>
           <FireworksCanvas />
           <div style={{
             textAlign: 'center',
-            animation: 'sold-card 3.2s ease-in-out forwards',
+            animation: 'sold-card-in 0.6s ease-out forwards',
           }}>
             {/* SOLD! badge */}
             <div style={{
@@ -2781,6 +2786,36 @@ function shuffle<T>(array: T[]): T[] {
               marginTop: 18,
               animation: 'sold-fade-up 0.5s ease-out 0.8s both',
             }}>₹{soldAnim.amount.toLocaleString()}</div>
+
+            {/* Next Player button */}
+            <button
+              onClick={() => proceedToNextPlayerRef.current?.()}
+              style={{
+                marginTop: 32,
+                padding: '12px 36px',
+                background: 'rgba(245,158,11,0.12)',
+                border: '1.5px solid rgba(245,158,11,0.6)',
+                borderRadius: 10,
+                color: '#f59e0b',
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontWeight: 800,
+                fontSize: 'clamp(0.95rem, 1.8vw, 1.2rem)',
+                letterSpacing: 3,
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                boxShadow: '0 0 20px rgba(245,158,11,0.2)',
+                animation: 'sold-fade-up 0.5s ease-out 1s both',
+                transition: 'background 0.18s, box-shadow 0.18s',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.22)';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 32px rgba(245,158,11,0.45)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.12)';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 20px rgba(245,158,11,0.2)';
+              }}
+            >Next Player</button>
           </div>
         </div>
       )}
@@ -2792,7 +2827,7 @@ function shuffle<T>(array: T[]): T[] {
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           padding: 'clamp(12px, 3vh, 24px) clamp(16px, 3vw, 40px) clamp(12px, 3vh, 24px)',
           background: 'rgba(2,4,18,0.98)',
-          animation: 'wc-backdrop 8s ease-in-out forwards',
+          animation: 'wc-backdrop-in 0.5s ease-out forwards',
           backdropFilter: 'blur(14px)',
           overflow: 'hidden',
         }}>
@@ -3068,6 +3103,36 @@ function shuffle<T>(array: T[]): T[] {
                 fontWeight: 700, color: '#00D97E', flexShrink: 0,
                 textShadow: '0 0 16px rgba(0,217,126,0.6)',
               }}>₹{wildcardReveal.amount.toLocaleString()}</div>
+            </div>
+
+            {/* Next Player button */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 28, animation: 'sold-fade-up 0.5s ease-out 5.8s both' }}>
+              <button
+                onClick={() => proceedToNextPlayerRef.current?.()}
+                style={{
+                  padding: '12px 36px',
+                  background: 'rgba(245,158,11,0.12)',
+                  border: '1.5px solid rgba(245,158,11,0.6)',
+                  borderRadius: 10,
+                  color: '#f59e0b',
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 800,
+                  fontSize: 'clamp(0.95rem, 1.8vw, 1.2rem)',
+                  letterSpacing: 3,
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  boxShadow: '0 0 20px rgba(245,158,11,0.2)',
+                  transition: 'background 0.18s, box-shadow 0.18s',
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.22)';
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 32px rgba(245,158,11,0.45)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = 'rgba(245,158,11,0.12)';
+                  (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 20px rgba(245,158,11,0.2)';
+                }}
+              >Next Player</button>
             </div>
 
           </div>
