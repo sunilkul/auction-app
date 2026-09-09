@@ -4,6 +4,7 @@ import AuctionPage from './pages/AuctionPage';
 import PlayerManagementPage from './pages/PlayerManagementPage';
 import TeamPage from './pages/TeamPage';
 import WheelPickerPage from './pages/WheelPickerPage';
+import SquadForgePage from './pages/SquadForgePage';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -12,6 +13,7 @@ const navItems = [
   { to: '/auction', label: 'Auction', end: false },
   { to: '/players', label: 'Players', end: false },
   { to: '/teams/1', label: 'Teams', end: false },
+  { to: '/forge-squad', label: 'Squad Forge', end: false },
 ];
 
 const Nav: React.FC = () => {
@@ -133,6 +135,7 @@ const App: React.FC = () => {
             <Route path="/players"      element={<PlayerManagementPage />} />
             <Route path="/teams/:id"    element={<TeamPage />} />
             <Route path="/wheel-picker" element={<WheelPickerPage />} />
+            <Route path="/forge-squad"   element={<SquadForgePage />} />
           </Routes>
         </div>
       </div>

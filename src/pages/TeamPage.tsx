@@ -88,7 +88,7 @@ const TeamPage: React.FC = () => {
 
                     {/* Player count */}
                     <div className="text-[0.6rem] font-mono text-slate-500 tracking-widest uppercase">
-                      {teamPlayers.length} players bought
+                      {teamPlayers.length} players
                     </div>
 
                     {/* POC badges */}
@@ -220,7 +220,10 @@ const TeamPage: React.FC = () => {
                               className="hover:bg-white/[0.02] transition-colors"
                             >
                               <td className="py-2.5 px-3">
-                                <img src={p.photo} alt={p.name}
+                                <img
+                                  src={p.photo || '/default-avatar.png'}
+                                  alt={p.name}
+                                  onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }}
                                   className="w-8 h-8 rounded-full object-cover"
                                   style={{ border: '1px solid rgba(255,255,255,0.1)' }}
                                 />

@@ -20,7 +20,7 @@ export interface Player {
   soldPrice: number | null;
   teamId: number | null;
   teamName?: string;
-  status: 'SOLD' | 'UNSOLD' | 'NOT_ASSIGNED' | 'ASSIGNED';
+  status: 'SOLD' | 'UNSOLD' | 'NOT_ASSIGNED' | 'ASSIGNED' | 'POOLED';
   stats: Record<string, number>;
   isNewPlayer: number;
   groupCode: string;

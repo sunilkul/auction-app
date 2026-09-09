@@ -21,6 +21,7 @@ const STATUS_CONFIG: Record<string, { accent: string; bg: string; border: string
   UNSOLD:       { accent: '#f87171', bg: 'rgba(248,113,113,0.08)', border: 'rgba(248,113,113,0.25)', label: 'Unsold' },
   NOT_ASSIGNED: { accent: '#38bdf8', bg: 'rgba(56,189,248,0.08)',  border: 'rgba(56,189,248,0.25)',  label: 'Not Assigned' },
   ASSIGNED:     { accent: '#818cf8', bg: 'rgba(129,140,248,0.08)', border: 'rgba(129,140,248,0.25)', label: 'Assigned' },
+  POOLED:       { accent: '#94a3b8', bg: 'rgba(148,163,184,0.08)', border: 'rgba(148,163,184,0.25)', label: 'Pooled' },
 };
 
 interface Skill { id: number; skillName: string; }
@@ -57,6 +58,17 @@ const PlayerManagementPage: React.FC = () => {
       await fetch(`http://localhost:8282/api/players/reset-auction?playerId=${id}`, { method: 'POST' });
       setPlayers(prev => prev.map(p =>
         p.id === id ? { ...p, status: 'NOT_ASSIGNED', soldPrice: null, teamId: null, teamName: undefined } : p
+      ));
+    } catch { /* silently ignore */ }
+  };
+
+  const handleUnassign = async (id: number) => {
+    try {
+      await fetch(`http://localhost:8282/api/players/update-status?playerId=${id}`, {
+        method: 'POST',
+      });
+      setPlayers(prev => prev.map(p =>
+        p.id === id ? { ...p, status: 'POOLED', soldPrice: null, teamId: null, teamName: undefined } : p
       ));
     } catch { /* silently ignore */ }
   };
@@ -257,6 +269,7 @@ const PlayerManagementPage: React.FC = () => {
                       isEven={idx % 2 === 0}
                       onMarkSold={handleOpenSellModal}
                       onMarkUnsold={handleMarkUnsold}
+                      onUnassign={handleUnassign}
                     />
                   );
                 })}
@@ -480,12 +493,14 @@ interface RowProps {
   isEven: boolean;
   onMarkSold: (player: Player) => void;
   onMarkUnsold: (id: number) => void;
+  onUnassign: (id: number) => void;
 }
 
-const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillName, skillStyle, isEven, onMarkSold, onMarkUnsold }) => {
+const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillName, skillStyle, isEven, onMarkSold, onMarkUnsold, onUnassign }) => {
   const [hov, setHov] = useState(false);
   const isSold = p.status === 'SOLD';
-  const btnColor = isSold ? '#f87171' : '#34d399';
+  const isAssigned = p.status === 'ASSIGNED';
+  const btnColor = isSold ? '#f87171' : isAssigned ? '#f59e0b' : '#34d399';
 
   return (
     <tr
@@ -516,7 +531,8 @@ const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillN
       <td className="py-3 px-4">
         <div className="flex items-center gap-3">
           <div className="relative flex-shrink-0">
-            <img src={p.photo} alt={p.name}
+            <img src={p.photo || '/default-avatar.png'} alt={p.name}
+              onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }}
               className="w-9 h-9 rounded-full object-cover"
               style={{ border: `1.5px solid ${sc.accent}40`, boxShadow: `0 0 10px ${sc.accent}20` }}
             />
@@ -579,7 +595,7 @@ const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillN
       {/* Action */}
       <td className="py-3 px-4">
         <button
-          onClick={() => isSold ? onMarkUnsold(p.id) : onMarkSold(p)}
+          onClick={() => isSold ? onMarkUnsold(p.id) : isAssigned ? onUnassign(p.id) : onMarkSold(p)}
           className="px-3 py-1.5 rounded-lg text-[0.65rem] font-bold tracking-widest uppercase transition-all duration-150 whitespace-nowrap"
           style={{
             background: hov ? `${btnColor}20` : 'rgba(255,255,255,0.04)',
@@ -588,7 +604,7 @@ const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillN
             boxShadow: hov ? `0 0 12px ${btnColor}25` : 'none',
           }}
         >
-          {isSold ? '↩ Unsold' : '✓ Sell'}
+          {isSold ? '↩ Unsold' : isAssigned ? '↩ Unassign' : '✓ Sell'}
         </button>
       </td>
     </tr>

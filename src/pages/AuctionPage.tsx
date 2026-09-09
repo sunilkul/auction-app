@@ -1310,8 +1310,9 @@ function shuffle<T>(array: T[]): T[] {
               /* Normal player photo */
               <>
                 <img
-                  src={player.photo}
+                  src={player.photo || '/default-avatar.png'}
                   alt={player.name}
+                  onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }}
                   style={{
                     position: 'absolute', inset: 0,
                     width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center',
@@ -2197,7 +2198,7 @@ function shuffle<T>(array: T[]): T[] {
               const soldTeam = teams.find(team => team.id === Number(soldPlayer.teamId));
               return (
                 <li key={soldPlayer.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 6px', background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.18)', borderRadius: 8 }}>
-                  <img src={soldPlayer.photo} alt={soldPlayer.name} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(52,211,153,0.30)' }} />
+                  <img src={soldPlayer.photo || '/default-avatar.png'} alt={soldPlayer.name} onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(52,211,153,0.30)' }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, color: '#e2e8f0', fontSize: 10.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{soldPlayer.name}</div>
                     <div style={{ color: '#64748b', fontSize: 9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{soldTeam?.name ?? soldPlayer.teamName ?? '—'}</div>
@@ -2529,8 +2530,9 @@ function shuffle<T>(array: T[]): T[] {
                 </div>
               ) : (
                 <img
-                  src={introPlayer.photo}
+                  src={introPlayer.photo || '/default-avatar.png'}
                   alt={introPlayer.name}
+                  onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }}
                   style={{
                     width: 172, height: 172, borderRadius: '50%',
                     objectFit: 'cover',
@@ -2939,8 +2941,9 @@ function shuffle<T>(array: T[]): T[] {
                     boxShadow: '0 0 48px rgba(245,158,11,0.65), 0 0 90px rgba(245,158,11,0.28)',
                   }}>
                     <img
-                      src={wildcardReveal.player.photo}
+                      src={wildcardReveal.player.photo || '/default-avatar.png'}
                       alt={wildcardReveal.player.name}
+                      onError={e => { e.currentTarget.onerror = null; e.currentTarget.src = '/default-avatar.png'; }}
                       style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block' }}
                     />
                     {/* Gold shine sweep after reveal */}
