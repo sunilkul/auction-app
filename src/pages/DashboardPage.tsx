@@ -1,16 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { Team } from '../types';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AuroraBackground } from '../components/ui/AuroraBackground';
 import { GlowCard } from '../components/ui/GlowCard';
 import { ShimmerText } from '../components/ui/ShimmerText';
 import { BackgroundBeams } from '../components/ui/BackgroundBeams';
 
+const PURSE_REVEAL_STORAGE_KEY = 'epl-dashboard-purse-revealed';
+
 const DashboardPage: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
+  const [purseRevealed, setPurseRevealed] = useState(() => (
+    localStorage.getItem(PURSE_REVEAL_STORAGE_KEY) === 'true'
+  ));
+  const [revealCelebration, setRevealCelebration] = useState(false);
+
+  const displayedPurse = purseRevealed ? 120000 : 90000;
 
   const totalSpent     = teams.reduce((a, t) => a + (t.purse - t.remainingPurse), 0);
-  const totalRemaining = teams.reduce((a, t) => a + t.remainingPurse, 0);
+  const totalRemaining = teams.length * displayedPurse;
+
+  useEffect(() => {
+    if (revealCelebration) {
+      const timeout = window.setTimeout(() => setRevealCelebration(false), 1900);
+      return () => window.clearTimeout(timeout);
+    }
+  }, [revealCelebration]);
 
   useEffect(() => {
     fetch('http://localhost:8282/api/teams')
@@ -23,9 +38,79 @@ const DashboardPage: React.FC = () => {
       .catch(() => setTeams([]));
   }, []);
 
+  const revealPurse = () => {
+    localStorage.setItem(PURSE_REVEAL_STORAGE_KEY, 'true');
+    setPurseRevealed(true);
+    setRevealCelebration(true);
+  };
+
   return (
     <AuroraBackground className="min-h-screen">
       <BackgroundBeams />
+
+      <motion.button
+        type="button"
+        onClick={revealPurse}
+        disabled={purseRevealed}
+        aria-label={purseRevealed ? 'Purse revealed' : 'Reveal purse'}
+        title={purseRevealed ? 'Purse revealed' : 'Reveal purse'}
+        className="fixed right-2 top-[4.25rem] z-30 h-4 w-4 overflow-hidden rounded-full border p-0 font-mono text-[0.45rem] font-bold leading-none opacity-40 transition-opacity hover:opacity-100 disabled:cursor-default"
+        style={{
+          color: purseRevealed ? '#34d399' : '#f59e0b',
+          borderColor: purseRevealed ? 'rgba(52,211,153,0.35)' : 'rgba(245,158,11,0.45)',
+          background: purseRevealed ? 'rgba(52,211,153,0.08)' : 'rgba(15,23,42,0.72)',
+          boxShadow: purseRevealed ? '0 0 10px rgba(52,211,153,0.12)' : '0 0 10px rgba(245,158,11,0.12)',
+        }}
+        whileHover={!purseRevealed ? { scale: 1.05 } : undefined}
+        whileTap={!purseRevealed ? { scale: 0.96 } : undefined}
+      >
+        <span className="relative z-10">{purseRevealed ? '.' : '?'}</span>
+        {!purseRevealed && (
+          <motion.span
+            className="absolute inset-0 bg-amber-400/10"
+            animate={{ x: ['-110%', '110%'] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        )}
+      </motion.button>
+
+      <AnimatePresence>
+        {revealCelebration && (
+          <motion.div
+            key="purse-flash"
+            className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center overflow-hidden"
+            style={{
+              background: 'radial-gradient(circle at 50% 48%, rgba(245,158,11,0.4), rgba(2,6,23,0.72) 42%, rgba(2,6,23,0.94) 100%)',
+              backdropFilter: 'blur(10px)',
+              WebkitBackdropFilter: 'blur(10px)',
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 0] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.9, times: [0, 0.18, 1], ease: 'easeOut' }}
+          >
+            {[0, 1, 2].map((ring) => (
+              <motion.div
+                key={ring}
+                className="absolute rounded-full border border-amber-300/50"
+                style={{ width: 120, height: 120, boxShadow: '0 0 30px rgba(245,158,11,0.25)' }}
+                initial={{ opacity: 0.85, scale: 0.15 }}
+                animate={{ opacity: 0, scale: 8 }}
+                transition={{ duration: 1.5, delay: ring * 0.16, ease: 'easeOut' }}
+              />
+            ))}
+            <motion.div
+              className="relative text-center"
+              initial={{ opacity: 0, scale: 0.35, y: 24 }}
+              animate={{ opacity: [0, 1, 1, 0], scale: [0.35, 1.12, 1, 1.04], y: [24, 0, 0, -18] }}
+              transition={{ duration: 1.7, times: [0, 0.2, 0.72, 1], ease: 'easeOut' }}
+            >
+              <div className="font-mono text-[0.65rem] font-bold tracking-[0.5em] text-amber-200 uppercase">The purse has risen</div>
+              <div className="font-display text-6xl font-black tracking-widest text-amber-300 drop-shadow-[0_0_28px_rgba(245,158,11,0.85)]">₹120,000</div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="relative z-10 px-5 py-5 max-w-[1600px] mx-auto">
 
@@ -80,7 +165,22 @@ const DashboardPage: React.FC = () => {
               className="rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3 text-center"
             >
               <div className="text-[0.6rem] text-slate-500 tracking-widest uppercase font-mono mb-1">{s.label}</div>
-              <div className="font-display font-black text-xl tracking-wider" style={{ color: s.color }}>{s.value}</div>
+              <div className="font-display font-black text-xl tracking-wider" style={{ color: s.color }}>
+                {s.label === 'Remaining' || s.label === 'Total Purse' ? (
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={displayedPurse}
+                      className="inline-block"
+                      initial={purseRevealed ? { opacity: 0, y: 12, scale: 0.4 } : { opacity: 1 }}
+                      animate={purseRevealed ? { opacity: 1, y: 0, scale: [0.4, 1.12, 1] } : { opacity: 1 }}
+                      exit={{ opacity: 0, y: -12, scale: 0.5, filter: 'blur(5px)' }}
+                      transition={{ duration: purseRevealed ? 0.75 : 0.2, ease: 'easeOut' }}
+                    >
+                      ₹{(totalRemaining / 100000).toFixed(1)}L
+                    </motion.span>
+                  </AnimatePresence>
+                ) : s.value}
+              </div>
             </motion.div>
           ))}
         </motion.div>
@@ -132,22 +232,43 @@ const DashboardPage: React.FC = () => {
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between items-baseline">
                     <span className="text-[0.6rem] text-slate-500 tracking-widest uppercase font-mono">Remaining</span>
-                    <span className="font-mono font-bold" style={{ color: barColor, fontSize: 'clamp(0.85rem, 1.1vw, 1.2rem)' }}>
-                      ₹{team.remainingPurse.toLocaleString()}
-                    </span>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={displayedPurse}
+                        className="font-mono font-bold inline-block"
+                        style={{ color: purseRevealed ? '#fbbf24' : barColor, fontSize: 'clamp(0.85rem, 1.1vw, 1.2rem)' }}
+                        initial={purseRevealed ? { opacity: 0, y: 18, scale: 0.35, rotate: -8 } : { opacity: 1 }}
+                        animate={purseRevealed ? { opacity: 1, y: 0, scale: [0.35, 1.18, 1], rotate: 0 } : { opacity: 1 }}
+                        exit={{ opacity: 0, y: -18, scale: 0.5, filter: 'blur(6px)' }}
+                        transition={{ duration: purseRevealed ? 0.75 : 0.2, delay: purseRevealed ? i * 0.08 : 0, ease: 'easeOut' }}
+                      >
+                        ₹{displayedPurse.toLocaleString()}
+                      </motion.span>
+                    </AnimatePresence>
                   </div>
                   <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
                     <motion.div
                       className="h-full rounded-full"
                       style={{ background: barColor, boxShadow: `0 0 8px ${barColor}` }}
                       initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
+                      animate={{ width: purseRevealed ? '100%' : `${pct}%`, background: purseRevealed ? '#fbbf24' : barColor }}
                       transition={{ duration: 1, delay: i * 0.07 + 0.5, ease: 'easeOut' }}
                     />
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[0.58rem] text-slate-600 font-mono">{pct}%</span>
-                    <span className="text-[0.58rem] text-slate-600 font-mono">₹{team.purse.toLocaleString()}</span>
+                    <span className="text-[0.58rem] text-slate-600 font-mono">{purseRevealed ? '100' : pct}%</span>
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={`total-${displayedPurse}`}
+                        className="text-[0.58rem] text-slate-600 font-mono inline-block"
+                        initial={purseRevealed ? { opacity: 0, y: 8 } : { opacity: 1 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
+                        transition={{ duration: purseRevealed ? 0.6 : 0.2, delay: purseRevealed ? i * 0.08 : 0 }}
+                      >
+                        ₹{displayedPurse.toLocaleString()}
+                      </motion.span>
+                    </AnimatePresence>
                   </div>
                 </div>
 
