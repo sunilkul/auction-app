@@ -205,6 +205,8 @@ export default function RandomizerPage() {
         sessionStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify([...next.entries()]));
         return next;
       });
+      setDistributionResult(null);
+      setExpandedGroup(null);
     } catch {
       setSaveStatus('error');
     } finally {
@@ -228,14 +230,14 @@ export default function RandomizerPage() {
       const rows: (string | number)[][] = [];
       for (const group of skillCat.groups) {
         rows.push([group.groupLabel]);
-        rows.push(['Rank', 'Player Name', 'Stats Score']);
+        rows.push(['Rank', 'Player Name']);
         for (const p of group.players) {
-          rows.push([p.aiRank, p.playerName, p.pscore]);
+          rows.push([p.aiRank, p.playerName]);
         }
         rows.push([]);
       }
       const sheet = XLSX.utils.aoa_to_sheet(rows);
-      sheet['!cols'] = [{ wch: 6 }, { wch: 28 }, { wch: 12 }];
+      sheet['!cols'] = [{ wch: 6 }, { wch: 28 }];
       const sheetName = skillCat.skill.replace(/[\\/:*?[\]]/g, '').slice(0, 31);
       XLSX.utils.book_append_sheet(wb, sheet, sheetName);
     }
@@ -284,7 +286,7 @@ export default function RandomizerPage() {
       <div className="relative z-10 min-h-screen flex flex-col">
 
         {/* Page header */}
-        <div style={{ padding: '26px 36px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ padding: '26px clamp(12px, 3vw, 36px) 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -331,7 +333,7 @@ export default function RandomizerPage() {
         </div>
 
         {/* Controls bar */}
-        <div style={{ padding: '12px 36px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ padding: '12px clamp(12px, 3vw, 36px)', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: 3, background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 3, border: '1px solid rgba(255,255,255,0.07)' }}>
             {['ALL', ...skills].map(s => {
               const active = skillFilter === s;
@@ -551,18 +553,17 @@ export default function RandomizerPage() {
                                 {/* Players */}
                                 <div style={{ padding: '3px 0' }}>
                                   {group.players.map((player, rowIdx) => {
-                                    const isZero = !player.pscore;
+                                    //const isZero = !player.pscore;
                                     return (
                                       <div key={player.playerId} style={{
                                         display: 'flex', alignItems: 'center', gap: 10,
                                         padding: '7px 14px',
-                                        background: rowIdx % 2 !== 0 ? 'rgba(255,255,255,0.018)' : 'transparent',
-                                        opacity: isZero ? 0.38 : 1,
+                                        background: rowIdx % 2 !== 0 ? 'rgba(255,255,255,0.018)' : 'transparent',                                        
                                       }}>
                                         <span style={{
                                           fontFamily: "'Bebas Neue', 'Barlow Condensed', sans-serif",
                                           fontSize: 13, color: `${sc}90`, width: 24,
-                                          textAlign: 'right', flexShrink: 0, lineHeight: 1,
+                                          textAlign: 'right', flexShrink: 0, lineHeight: 1,                                          
                                         }}>
                                           {player.aiRank}
                                         </span>
@@ -575,14 +576,14 @@ export default function RandomizerPage() {
                                         }}>
                                           {player.playerName}
                                         </span>
-                                        <span style={{
+                                        {/*<span style={{
                                           fontFamily: "'Space Mono', monospace", fontSize: 9,
                                           color: sc, background: `${sc}15`, border: `1px solid ${sc}35`,
                                           borderRadius: 4, padding: '2px 6px', letterSpacing: 0.8,
                                           whiteSpace: 'nowrap', flexShrink: 0,
                                         }}>
                                          {Number(player.pscore || 0).toFixed(0)}
-                                        </span>
+                                        </span>*/}
                                         {savedAssignments.has(player.playerId) && (() => {
                                           const a = savedAssignments.get(player.playerId)!;
                                           return (
@@ -724,7 +725,7 @@ export default function RandomizerPage() {
                     borderRadius: 16,
                     border: `1px solid ${sc}45`,
                     boxShadow: `0 40px 100px rgba(0,0,0,0.9), 0 0 0 1px ${sc}20, 0 0 80px ${sc}12`,
-                    width: 500,
+                    width: 'min(500px, calc(100vw - 24px))',
                     maxHeight: '82vh',
                     display: 'flex',
                     flexDirection: 'column',
@@ -778,13 +779,11 @@ export default function RandomizerPage() {
                   {/* Player list */}
                   <div style={{ overflowY: 'auto', flex: 1, padding: '4px 0' }}>
                     {group.players.map((player, rowIdx) => {
-                      const isZero = !player.pscore;
                       return (
                         <div key={player.playerId} style={{
                           display: 'flex', alignItems: 'center', gap: 14,
                           padding: '10px 20px',
                           background: rowIdx % 2 !== 0 ? 'rgba(255,255,255,0.022)' : 'transparent',
-                          opacity: isZero ? 0.38 : 1,
                         }}>
                           <span style={{
                             fontFamily: "'Bebas Neue', 'Barlow Condensed', sans-serif",
@@ -801,14 +800,6 @@ export default function RandomizerPage() {
                             letterSpacing: 0.5, lineHeight: 1,
                           }}>
                             {player.playerName}
-                          </span>
-                          <span style={{
-                            fontFamily: "'Space Mono', monospace", fontSize: 10,
-                            color: sc, background: `${sc}15`, border: `1px solid ${sc}35`,
-                            borderRadius: 5, padding: '3px 7px', letterSpacing: 0.8,
-                            whiteSpace: 'nowrap', flexShrink: 0,
-                          }}>
-                            PS {Number(player.pscore || 0).toFixed(0)}
                           </span>
                           {savedAssignments.has(player.playerId) && (() => {
                             const a = savedAssignments.get(player.playerId)!;
@@ -892,7 +883,7 @@ export default function RandomizerPage() {
                     background: '#0a1628', borderRadius: 16,
                     border: `1px solid ${sc}45`,
                     boxShadow: `0 40px 100px rgba(0,0,0,0.9), 0 0 80px ${sc}12`,
-                    width: 560, maxHeight: '80vh',
+                    width: 'min(560px, calc(100vw - 24px))', maxHeight: '80vh',
                     display: 'flex', flexDirection: 'column', overflow: 'hidden',
                   }}
                 >

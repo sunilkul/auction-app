@@ -19,6 +19,28 @@ interface SessionSale {
 const BID_INCREMENT = 2000;
 const BG = '#020617';
 
+type AuctionStatus = 'SOLD' | 'UNSOLD';
+
+interface AuctionStatusRequest {
+  playerId: number;
+  teamId: number;
+  soldPrice: number;
+  status: AuctionStatus;
+}
+
+const updateAuctionStatus = async (request: AuctionStatusRequest): Promise<void> => {
+  const response = await fetch('http://localhost:8282/api/players/auction', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const responseText = await response.text();
+    throw new Error(`Auction status update failed (${response.status}): ${responseText}`);
+  }
+};
+
 
 const AuctionPage: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -71,6 +93,7 @@ const AuctionPage: React.FC = () => {
   const activeTeamNamesRef = useRef<Set<string>>(new Set());
   const teamsRef = useRef(teams);
   const proceedToNextPlayerRef = useRef<(() => void) | null>(null);
+  const auctionOrderInitializedRef = useRef(false);
 
 function shuffle<T>(array: T[]): T[] {
     const arr = [...array];
@@ -80,6 +103,42 @@ function shuffle<T>(array: T[]): T[] {
     }
     return arr;
   }
+
+  function shuffle1(playersToShuffle: Player[]): Player[] {
+    if (playersToShuffle.length < 2) return [...playersToShuffle];
+
+    const weightedPlayers = playersToShuffle.map(player => {
+      const statValues = Object.values(player.stats ?? {})
+        .filter(value => Number.isFinite(value));
+      const weightedAverage = statValues.length > 0
+        ? statValues.reduce((total, value) => total + value, 0) / statValues.length
+        : 0;
+
+      return { player, weightedAverage };
+    });
+
+    const averages = weightedPlayers.map(item => item.weightedAverage);
+    const minimumAverage = Math.min(...averages);
+    const maximumAverage = Math.max(...averages);
+    const averageRange = maximumAverage - minimumAverage;
+
+    // Weighted random permutation: stronger average stats increase the chance
+    // of appearing earlier, while the random key keeps every auction varied.
+    return weightedPlayers
+      .map(item => {
+        const normalizedAverage = averageRange === 0
+          ? 0.5
+          : (item.weightedAverage - minimumAverage) / averageRange;
+        const weight = 0.2 + normalizedAverage * 0.8;
+        return {
+          player: item.player,
+          randomKey: Math.pow(Math.random(), 1 / weight),
+        };
+      })
+      .sort((a, b) => b.randomKey - a.randomKey)
+      .map(item => item.player);
+  }
+  
 
   useEffect(() => {
     fetch('http://localhost:8282/api/players')
@@ -146,17 +205,31 @@ function shuffle<T>(array: T[]): T[] {
   }, [selectedSkill, skillGroups]);
 
   useEffect(() => {
-    if (selectedSkill <= 0 || !selectedGroupCode || !auctionStarted) {
+    if (!auctionStarted) {
+      auctionOrderInitializedRef.current = false;
       setAuctionPlayers([]);
       return;
     }
+
+    // Keep the first shuffled order for the whole auction. Remove this guard
+    // if the auction should be reshuffled whenever the player list changes.
+    if (auctionOrderInitializedRef.current || selectedSkill <= 0 || !selectedGroupCode) return;
+
     const filtered = players.filter(p =>
       p.status === 'NOT_ASSIGNED' &&
       Number(p.skillId) === selectedSkill &&
       p.groupCode === selectedGroupCode
     );
-    setAuctionPlayers(shuffle(filtered));
+
+    // Run a normal shuffle followed by the stats-weighted shuffle during
+    // initialization. The complete Player objects, including stats, stay intact.
+    const shuffledPlayers = shuffle1(shuffle(filtered));
+    
+
+    setAuctionPlayers(shuffledPlayers);
+
     setCurrentPlayerIdx(0);
+    auctionOrderInitializedRef.current = true;
   }, [players, selectedSkill, selectedGroupCode, auctionStarted]);
 
   useEffect(() => {
@@ -989,12 +1062,17 @@ function shuffle<T>(array: T[]): T[] {
     const soldTeam = teams.find(t => t.id === currentBidTeam);
 
     try {
-      await fetch('http://localhost:8282/api/players/auction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: player.id, teamId: currentBidTeam, soldPrice: soldAmount, status: 'SOLD' }),
+      await updateAuctionStatus({
+        playerId: player.id,
+        teamId: currentBidTeam,
+        soldPrice: soldAmount,
+        status: 'SOLD',
       });
-    } catch (e) { setError('Failed to update auction result.'); return; }
+    } catch (error) {
+      console.error('Failed to update player status to SOLD:', error);
+      setError('Failed to update auction result.');
+      return;
+    }
 
     if (isWildcard) {
       setWildcardReveal({ player, teamName: soldTeam?.name ?? '—', teamLogo: soldTeam?.logo ?? '', amount: soldAmount });
@@ -1044,23 +1122,35 @@ function shuffle<T>(array: T[]): T[] {
 
   const handleUnsold = async () => {
     try {
-      await fetch('http://localhost:8282/api/players/auction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ playerId: player.id, teamId: null, soldPrice: 0, status: 'UNSOLD' }),
+      await updateAuctionStatus({
+        playerId: player.id,
+        teamId: -1,
+        soldPrice: 0,
+        status: 'UNSOLD',
       });
-    } catch (e) { setError('Failed to update auction result.'); return; }
+    } catch (error) {
+      console.error('Failed to update player status to UNSOLD:', error);
+      setError('Failed to update player status to UNSOLD.');
+      return;
+    }
     setUnsoldCount(c => c + 1);
-    setPlayers(players.filter(p => p.id !== player.id));
-    setAuctionPlayers(auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx));
-    setCurrentPlayerIdx(idx => idx >= auctionPlayers.length - 1 ? 0 : idx);
-    setAuctionLog([]);
+    setPlayers(previousPlayers => previousPlayers.filter(p => p.id !== player.id));
+    const nextAuctionPlayers = auctionPlayers.filter((_, idx) => idx !== currentPlayerIdx);
+    console.log('Unsold player:', player.name, 'Next auction players:', nextAuctionPlayers.map(p => p.name));
+    setAuctionPlayers(nextAuctionPlayers);
+    setCurrentPlayerIdx(idx => idx >= nextAuctionPlayers.length - 1 ? 0 : idx);
+    setAuctionLog(previousLog => [{
+      id: ++eventIdRef.current,
+      type: 'unsold' as const,
+      playerName: player.name,
+      time: new Date().toLocaleTimeString(),
+    }, ...previousLog].slice(0, 80));
     setError('');
   };
 
   /* ── Main auction screen ──────────────────────────────────────────── */
   return (
-    <div style={{ height: 'calc(100vh - 56px)', background: '#020617', padding: '0.35rem 0.6rem', width: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="auction-page-shell" style={{ height: 'calc(100vh - 56px)', background: '#020617', padding: '0.35rem 0.6rem', width: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* ── Title bar ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14, flexShrink: 0, marginBottom: 2, position: 'relative' }}>
         {/* Auction progress — left side */}
@@ -1142,7 +1232,7 @@ function shuffle<T>(array: T[]): T[] {
         </div>
       </div>
 
-      <div style={{
+      <div className="auction-main-grid" style={{
         display: 'grid',
         gridTemplateColumns: 'var(--sidebar) 1fr var(--sidebar)',
         gridTemplateRows: '1fr',

@@ -5,6 +5,7 @@ import PlayerManagementPage from './pages/PlayerManagementPage';
 import TeamPage from './pages/TeamPage';
 import WheelPickerPage from './pages/WheelPickerPage';
 import SquadForgePage from './pages/SquadForgePage';
+import WildCardPlayersPage from './pages/WildCardPlayersPage';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,6 +15,7 @@ const navItems = [
   { to: '/players', label: 'Players', end: false },
   { to: '/teams/1', label: 'Teams', end: false },
   { to: '/forge-squad', label: 'Squad Forge', end: false },
+  { to: '/wildcard-players', label: 'Wildcard Players', end: false },
 ];
 
 const Nav: React.FC = () => {
@@ -27,7 +29,7 @@ const Nav: React.FC = () => {
 
   return (
     <nav
-      className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center px-6 gap-1 transition-all duration-300"
+      className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center px-3 md:px-6 gap-1 transition-all duration-300"
       style={{
         background: scrolled
           ? 'rgba(2,6,23,0.92)'
@@ -39,7 +41,7 @@ const Nav: React.FC = () => {
       }}
     >
       {/* Brand */}
-      <NavLink to="/" className="mr-6 flex items-center gap-2 no-underline group">
+      <NavLink to="/" className="mr-2 md:mr-6 flex shrink-0 items-center gap-2 no-underline group">
         <img
           src="/epl-logo.png"
           alt="EPL Season 8"
@@ -60,14 +62,14 @@ const Nav: React.FC = () => {
       </NavLink>
 
       {/* Nav links — centred absolutely so brand + logos don't affect position */}
-      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1">
+      <div className="relative flex min-w-0 flex-1 items-center justify-start md:justify-center gap-1 overflow-x-auto [scrollbar-width:none]">
         {navItems.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
             className={({ isActive }) =>
-              `relative px-4 py-1.5 rounded-lg text-[0.72rem] font-body font-extrabold tracking-widest uppercase transition-all duration-200 no-underline ${
+              `relative shrink-0 px-2 md:px-4 py-1.5 rounded-lg text-[0.72rem] font-body font-extrabold tracking-widest uppercase transition-all duration-200 no-underline whitespace-nowrap ${
                 isActive
                   ? 'text-amber-400'
                   : 'text-slate-400 hover:text-slate-100'
@@ -95,7 +97,7 @@ const Nav: React.FC = () => {
       </div>
 
       {/* EPAM + CoT logos */}
-      <div className="ml-auto flex items-center gap-4">
+      <div className="ml-auto hidden lg:flex items-center gap-4 shrink-0">
         <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.10)' }} />
         <img
           src="/epam-logo.svg"
@@ -136,6 +138,7 @@ const App: React.FC = () => {
             <Route path="/teams/:id"    element={<TeamPage />} />
             <Route path="/wheel-picker" element={<WheelPickerPage />} />
             <Route path="/forge-squad"   element={<SquadForgePage />} />
+            <Route path="/wildcard-players" element={<WildCardPlayersPage />} />
           </Routes>
         </div>
       </div>

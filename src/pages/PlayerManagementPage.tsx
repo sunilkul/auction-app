@@ -125,7 +125,7 @@ const PlayerManagementPage: React.FC = () => {
     <AuroraBackground className="min-h-screen">
       <BackgroundBeams />
 
-      <div className="relative z-10 px-6 py-10 max-w-[1400px] mx-auto">
+      <div className="relative z-10 px-3 sm:px-6 py-6 sm:py-10 max-w-[1400px] mx-auto">
 
         {/* ── Header ── */}
         <motion.div
@@ -234,13 +234,13 @@ const PlayerManagementPage: React.FC = () => {
         {/* ── Table ── */}
         {filteredPlayers.length > 0 ? (
           <motion.div
-            className="rounded-2xl overflow-hidden"
+            className="rounded-2xl overflow-x-auto"
             style={{ border: '1px solid rgba(148,163,184,0.08)', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25, duration: 0.5 }}
           >
-            <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+            <table className="w-full min-w-[900px]" style={{ borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'linear-gradient(90deg, rgba(15,23,42,0.98), rgba(30,41,59,0.98))', borderBottom: '1px solid rgba(245,158,11,0.15)' }}>
                   {['#', 'Player', 'Skill', 'Status', 'Base', 'Sold', 'Team', 'Action'].map(col => (
@@ -270,6 +270,7 @@ const PlayerManagementPage: React.FC = () => {
                       onMarkSold={handleOpenSellModal}
                       onMarkUnsold={handleMarkUnsold}
                       onUnassign={handleUnassign}
+                      onMoveToPool={handleUnassign}
                     />
                   );
                 })}
@@ -494,13 +495,15 @@ interface RowProps {
   onMarkSold: (player: Player) => void;
   onMarkUnsold: (id: number) => void;
   onUnassign: (id: number) => void;
+  onMoveToPool: (id: number) => void;
 }
 
-const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillName, skillStyle, isEven, onMarkSold, onMarkUnsold, onUnassign }) => {
+const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillName, skillStyle, isEven, onMarkSold, onMarkUnsold, onUnassign, onMoveToPool }) => {
   const [hov, setHov] = useState(false);
   const isSold = p.status === 'SOLD';
   const isAssigned = p.status === 'ASSIGNED';
-  const btnColor = isSold ? '#f87171' : isAssigned ? '#f59e0b' : '#34d399';
+  const isUnsold = p.status === 'UNSOLD';
+  const btnColor = isSold ? '#f87171' : isAssigned ? '#f59e0b' : isUnsold ? '#38bdf8' : '#34d399';
 
   return (
     <tr
@@ -595,7 +598,7 @@ const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillN
       {/* Action */}
       <td className="py-3 px-4">
         <button
-          onClick={() => isSold ? onMarkUnsold(p.id) : isAssigned ? onUnassign(p.id) : onMarkSold(p)}
+          onClick={() => isSold ? onMarkUnsold(p.id) : isAssigned ? onUnassign(p.id) : isUnsold ? onMoveToPool(p.id) : onMarkSold(p)}
           className="px-3 py-1.5 rounded-lg text-[0.65rem] font-bold tracking-widest uppercase transition-all duration-150 whitespace-nowrap"
           style={{
             background: hov ? `${btnColor}20` : 'rgba(255,255,255,0.04)',
@@ -604,7 +607,7 @@ const PlayerRow: React.FC<RowProps> = ({ index, player: p, statusCfg: sc, skillN
             boxShadow: hov ? `0 0 12px ${btnColor}25` : 'none',
           }}
         >
-          {isSold ? '↩ Unsold' : isAssigned ? '↩ Unassign' : '✓ Sell'}
+          {isSold ? '↩ Unsold' : isAssigned ? '↩ Unassign' : isUnsold ? '↗ Move to Pool' : '✓ Sell'}
         </button>
       </td>
     </tr>

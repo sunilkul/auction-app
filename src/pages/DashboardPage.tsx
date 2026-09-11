@@ -146,7 +146,7 @@ const DashboardPage: React.FC = () => {
 
         {/* ── Summary stats ── */}
         <motion.div
-          className="grid grid-cols-4 gap-3 mb-6 max-w-3xl mx-auto"
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 max-w-3xl mx-auto"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
@@ -186,7 +186,7 @@ const DashboardPage: React.FC = () => {
         </motion.div>
 
         {/* ── Team cards grid ── */}
-        <div className="grid grid-cols-5 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
           {teams.map((team, i) => {
             const pct      = team.purse > 0 ? Math.round((team.remainingPurse / team.purse) * 100) : 0;
             const barColor = pct > 60 ? '#34d399' : pct > 30 ? '#f59e0b' : '#f87171';

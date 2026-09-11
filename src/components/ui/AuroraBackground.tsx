@@ -8,7 +8,7 @@ interface Props {
 
 export const AuroraBackground: React.FC<Props> = ({ children, className = '' }) => {
   return (
-    <div className={cn('relative overflow-hidden', className)}>
+    <div className={cn('relative overflow-x-hidden', className)}>
       {/* Deep void base */}
       <div className="absolute inset-0 bg-[#020617]" />
 

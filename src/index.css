@@ -28,8 +28,23 @@ body {
   background: var(--void);
   color: #f8fafc;
   font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@media (max-width: 900px) {
+  .auction-page-shell {
+    height: auto !important;
+    min-height: calc(100vh - 56px) !important;
+    overflow: visible !important;
+  }
+
+  .auction-main-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: auto !important;
+    overflow: visible !important;
+  }
 }
 
 /* ── SCROLLBAR ──────────────────────────────────── */

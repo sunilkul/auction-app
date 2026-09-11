@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Team, Player } from '../types';
+import * as XLSX from 'xlsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AuroraBackground } from '../components/ui/AuroraBackground';
 import { GlowCard } from '../components/ui/GlowCard';
@@ -16,6 +17,62 @@ const TeamPage: React.FC = () => {
     fetch('http://localhost:8282/api/teams').then(r => r.json()).then(setTeams);
     fetch('http://localhost:8282/api/players/all-players').then(r => r.json()).then(setPlayers);
   }, []);
+
+  const exportToExcel = () => {
+    const workbook = XLSX.utils.book_new();
+    const usedSheetNames = new Set<string>();
+
+    const getSheetName = (name: string, fallback: string) => {
+      const baseName = (name || fallback).replace(/[\\/:*?[\]]/g, '').trim().slice(0, 31) || fallback;
+      let sheetName = baseName;
+      let suffix = 1;
+      while (usedSheetNames.has(sheetName)) {
+        const suffixText = ` (${suffix++})`;
+        sheetName = `${baseName.slice(0, 31 - suffixText.length)}${suffixText}`;
+      }
+      usedSheetNames.add(sheetName);
+      return sheetName;
+    };
+
+    const teamRows = teams.flatMap(team => {
+      const teamPlayers = players.filter(player => Number(player.teamId) === Number(team.id));
+      const rows = teamPlayers.length > 0 ? teamPlayers : [null];
+      return rows.map(player => ({
+        'Team': team.name,
+        'POC 1': team.poc1 || '',
+        'POC 2': team.poc2 || '',
+        'Player Name': player?.name || '',
+        'Skill': player?.skillName || '',
+      }));
+    });
+    const teamsSheet = XLSX.utils.json_to_sheet(teamRows);
+    teamsSheet['!cols'] = [
+      { wch: 24 }, { wch: 24 }, { wch: 24 }, { wch: 28 }, { wch: 20 },
+    ];
+    XLSX.utils.book_append_sheet(workbook, teamsSheet, getSheetName('Teams', 'Teams'));
+
+    teams.forEach(team => {
+      const teamPlayers = players.filter(player => Number(player.teamId) === Number(team.id));
+      const rows = [
+        ['Team', team.name],
+        ['POC 1', team.poc1 || ''],
+        ['POC 2', team.poc2 || ''],
+        [],
+        ['Player Name', 'Skill'],
+        ...teamPlayers.map(player => [
+          player.name,
+          player.skillName || '',
+        ]),
+      ];
+      const teamSheet = XLSX.utils.aoa_to_sheet(rows);
+      teamSheet['!cols'] = [
+        { wch: 28 }, { wch: 20 },
+      ];
+      XLSX.utils.book_append_sheet(workbook, teamSheet, getSheetName(team.name, 'Team'));
+    });
+
+    XLSX.writeFile(workbook, 'EPL_Teams_and_Squads.xlsx');
+  };
 
 
   return (
@@ -40,6 +97,14 @@ const TeamPage: React.FC = () => {
           <p className="text-slate-500 text-xs tracking-[0.4em] uppercase font-mono mt-3">
             Click a team to view their squad
           </p>
+          <button
+            type="button"
+            onClick={exportToExcel}
+            disabled={teams.length === 0}
+            className="mt-5 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 font-mono text-xs font-bold tracking-widest text-emerald-300 uppercase transition-colors hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Export XLSX
+          </button>
         </motion.div>
 
         {/* ── Team grid ── */}
@@ -141,6 +206,10 @@ const TeamPage: React.FC = () => {
       <AnimatePresence>
         {selectedTeam && (() => {
           const teamPlayers = players.filter(p => Number(p.teamId) === Number(selectedTeam.id));
+          const sortedTeamPlayers = [...teamPlayers].sort((a, b) => {
+            const statusOrder: Record<string, number> = { SOLD: 0, ASSIGNED: 1 };
+            return (statusOrder[a.status] ?? 2) - (statusOrder[b.status] ?? 2);
+          });
           return (
             <motion.div
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -163,7 +232,7 @@ const TeamPage: React.FC = () => {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.9, y: 30 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                onClick={e => e.stopPropagation()}
+                onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
               >
                 {/* Amber top stripe */}
                 <div className="h-0.5 rounded-t-2xl" style={{ background: 'linear-gradient(90deg, transparent, #f59e0b, transparent)' }} />
@@ -198,10 +267,10 @@ const TeamPage: React.FC = () => {
                       No players bought yet.
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full" style={{ borderCollapse: 'collapse' }}>
+                    <div className="overflow-auto" style={{ maxHeight: 280 }}>
+                      <table className="w-full min-w-[680px]" style={{ borderCollapse: 'collapse' }}>
                         <thead>
-                          <tr style={{ borderBottom: '1px solid rgba(245,158,11,0.15)' }}>
+                          <tr className="sticky top-0 z-10" style={{ background: 'rgba(15,23,42,0.98)', borderBottom: '1px solid rgba(245,158,11,0.15)' }}>
                             {['Photo', 'Name', 'Skill', 'Status', 'Base Price', 'Sold Price'].map(h => (
                               <th key={h} className="py-2.5 px-3 text-left text-[0.6rem] font-mono font-bold text-slate-500 tracking-widest uppercase">
                                 {h}
@@ -210,7 +279,7 @@ const TeamPage: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {teamPlayers.map((p, idx) => (
+                          {sortedTeamPlayers.map((p, idx) => (
                             <motion.tr
                               key={p.id}
                               initial={{ opacity: 0, x: -10 }}
